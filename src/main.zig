@@ -12,6 +12,7 @@ const executor = @import("executor.zig");
 const data_entry = @import("data_entry.zig");
 const attributes = @import("attributes.zig");
 const ghostty_vt_example = @import("ghostty_vt_example.zig");
+const ghostty_vt_terminal = @import("ghostty_vt_terminal.zig");
 
 // Optional: libghostty-vt integration (only available if dependency is available)
 const has_ghostty_vt = @import("builtin").zig_backend != .other;
@@ -47,6 +48,18 @@ pub fn main() !void {
     try term.write_string("IBM 3270 Terminal");
 
     try term.render();
+
+    // Optional: Demonstrate libghostty-vt integration
+    if (has_ghostty_vt) {
+        std.debug.print("\n=== libghostty-vt Integration Demo ===\n", .{});
+        var vt_term = try ghostty_vt_terminal.GhosttyVtTerminal.init(allocator, &scr);
+        defer vt_term.deinit();
+
+        try vt_term.write_string("VT Terminal Output");
+        const vt_output = try vt_term.getTerminalOutput();
+        defer allocator.free(vt_output);
+        std.debug.print("Output: {s}\n", .{vt_output});
+    }
 }
 
 test {
@@ -63,4 +76,5 @@ test {
     _ = @import("data_entry.zig");
     _ = @import("attributes.zig");
     _ = ghostty_vt_example;
+    _ = ghostty_vt_terminal;
 }
