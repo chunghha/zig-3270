@@ -77,7 +77,17 @@ pub const Executor = struct {
                         const attr: protocol.FieldAttribute = @bitCast(attr_byte);
 
                         const field_start = self.cursor_address;
-                        _ = try self.field_manager.add_field(field_start, 1, attr);
+                        _ = try self.field_manager.add_field(field_start, 80, attr);
+                        self.cursor_address += 1;
+                        pos += 1;
+                    },
+                    .set_attribute => {
+                        if (pos + 1 > data.len) return error.IncompleteOrder;
+                        // Set attribute for current field (extended implementation)
+                        pos += 1;
+                    },
+                    .insert_cursor => {
+                        // Just skip - cursor already managed
                         pos += 1;
                     },
                     else => {
