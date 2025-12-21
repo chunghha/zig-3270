@@ -1,367 +1,224 @@
 const std = @import("std");
 
-/// Reusable buffer pool for command data
-/// Reduces allocations in hot path (parser, executor)
-pub const BufferPool = struct {
-    allocator: std.mem.Allocator,
-    available: std.ArrayList([]u8),
-    in_use: std.ArrayList([]u8),
-    buffer_size: usize,
-    stats: PoolStats,
+/// Generic reusable buffer pool for reducing allocations in hot paths
+pub fn BufferPool(comptime T: type) type {
+    return struct {
+        const Self = @This();
 
-    pub const PoolStats = struct {
-        allocations: u64 = 0,
-        deallocations: u64 = 0,
-        pool_hits: u64 = 0,
-        pool_misses: u64 = 0,
-        peak_in_use: usize = 0,
-    };
+        buffers: std.ArrayList([]T),
+        allocator: std.mem.Allocator,
+        buffer_size: usize,
+        allocations: usize = 0,
+        deallocations: usize = 0,
+        reuses: usize = 0,
 
-    /// Initialize buffer pool with specified buffer size
-    pub fn init(allocator: std.mem.Allocator, buffer_size: usize) BufferPool {
-        return .{
-            .allocator = allocator,
-            .available = std.ArrayList([]u8).init(allocator),
-            .in_use = std.ArrayList([]u8).init(allocator),
-            .buffer_size = buffer_size,
-            .stats = PoolStats{},
-        };
-    }
-
-    /// Preallocate N buffers for the pool
-    pub fn preallocate(self: *BufferPool, count: usize) !void {
-        for (0..count) |_| {
-            const buffer = try self.allocator.alloc(u8, self.buffer_size);
-            try self.available.append(buffer);
-        }
-    }
-
-    /// Get a buffer from pool (allocates new if pool empty)
-    pub fn get(self: *BufferPool) ![]u8 {
-        var buffer: []u8 = undefined;
-
-        if (self.available.items.len > 0) {
-            // Reuse from pool
-            buffer = self.available.pop();
-            self.stats.pool_hits += 1;
-        } else {
-            // Allocate new
-            buffer = try self.allocator.alloc(u8, self.buffer_size);
-            self.stats.pool_misses += 1;
-            self.stats.allocations += 1;
+        pub fn init(allocator: std.mem.Allocator, buffer_size: usize) Self {
+            return Self{
+                .buffers = std.ArrayList([]T).init(allocator),
+                .allocator = allocator,
+                .buffer_size = buffer_size,
+            };
         }
 
-        try self.in_use.append(buffer);
-
-        // Track peak usage
-        if (self.in_use.items.len > self.stats.peak_in_use) {
-            self.stats.peak_in_use = self.in_use.items.len;
-        }
-
-        return buffer;
-    }
-
-    /// Return buffer to pool for reuse
-    pub fn put(self: *BufferPool, buffer: []u8) !void {
-        // Find and remove from in_use list
-        var found = false;
-        for (0..self.in_use.items.len) |i| {
-            if (self.in_use.items[i].ptr == buffer.ptr) {
-                _ = self.in_use.orderedRemove(i);
-                found = true;
-                break;
+        pub fn deinit(self: *Self) void {
+            for (self.buffers.items) |buf| {
+                self.allocator.free(buf);
             }
+            self.buffers.deinit();
         }
 
-        if (!found) {
-            return error.BufferNotInUse;
+        /// Acquire a buffer from the pool or allocate a new one
+        pub fn acquire(self: *Self) ![]T {
+            if (self.buffers.popOrNull()) |buf| {
+                self.reuses += 1;
+                return buf;
+            }
+            self.allocations += 1;
+            return try self.allocator.alloc(T, self.buffer_size);
         }
 
-        // Add back to available
-        try self.available.append(buffer);
-        self.stats.deallocations += 1;
-    }
-
-    /// Clear a buffer without returning to pool (drop it)
-    pub fn drop(self: *BufferPool, buffer: []u8) !void {
-        // Find and remove from in_use
-        for (0..self.in_use.items.len) |i| {
-            if (self.in_use.items[i].ptr == buffer.ptr) {
-                const buf = self.in_use.orderedRemove(i);
+        /// Return a buffer to the pool for reuse
+        pub fn release(self: *Self, buf: []T) !void {
+            if (buf.len != self.buffer_size) {
                 self.allocator.free(buf);
                 return;
             }
+            self.deallocations += 1;
+            try self.buffers.append(buf);
         }
-    }
 
-    /// Get current pool statistics
-    pub fn get_stats(self: BufferPool) PoolStats {
-        return self.stats;
-    }
-
-    /// Get pool utilization (0-100%)
-    pub fn utilization(self: BufferPool) f32 {
-        if (self.stats.peak_in_use == 0) {
-            return 0.0;
+        /// Get current pool size (number of available buffers)
+        pub fn poolSize(self: *const Self) usize {
+            return self.buffers.items.len;
         }
-        return @as(f32, @floatFromInt(self.in_use.items.len)) /
-            @as(f32, @floatFromInt(self.stats.peak_in_use)) * 100.0;
-    }
 
-    /// Clear all buffers (used during shutdown)
-    pub fn clear(self: *BufferPool) void {
-        for (self.available.items) |buffer| {
-            self.allocator.free(buffer);
+        /// Print statistics
+        pub fn printStats(self: *const Self) void {
+            const hit_rate = if (self.allocations + self.reuses > 0)
+                @as(f64, @floatFromInt(self.reuses)) / @as(f64, @floatFromInt(self.allocations + self.reuses)) * 100.0
+            else
+                0.0;
+
+            std.debug.print(
+                "Buffer Pool: {} allocations, {} reuses, {d:.1}% hit rate, {} in pool\n",
+                .{ self.allocations, self.reuses, hit_rate, self.poolSize() },
+            );
         }
-        for (self.in_use.items) |buffer| {
-            self.allocator.free(buffer);
-        }
-        self.available.clearRetainingCapacity();
-        self.in_use.clearRetainingCapacity();
-    }
+    };
+}
 
-    /// Deinitialize pool
-    pub fn deinit(self: *BufferPool) void {
-        self.clear();
-        self.available.deinit();
-        self.in_use.deinit();
-    }
-};
+/// Pool for command data buffers (typical size: 1920 for screen buffer)
+pub const CommandBufferPool = BufferPool(u8);
 
-/// Pool for common screen buffer size (24x80 = 1920 bytes)
-pub const ScreenBufferPool = struct {
-    pool: BufferPool,
+/// Pool for screen buffers
+pub const ScreenBufferPool = BufferPool(u8);
 
-    pub const SCREEN_SIZE = 24 * 80; // 1920 bytes
-
-    /// Initialize screen buffer pool
-    pub fn init(allocator: std.mem.Allocator) ScreenBufferPool {
-        return .{
-            .pool = BufferPool.init(allocator, SCREEN_SIZE),
-        };
-    }
-
-    /// Preallocate screen buffers
-    pub fn preallocate(self: *ScreenBufferPool, count: usize) !void {
-        try self.pool.preallocate(count);
-    }
-
-    /// Get a screen buffer
-    pub fn get(self: *ScreenBufferPool) ![]u8 {
-        return self.pool.get();
-    }
-
-    /// Return screen buffer
-    pub fn put(self: *ScreenBufferPool, buffer: []u8) !void {
-        return self.pool.put(buffer);
-    }
-
-    /// Get statistics
-    pub fn stats(self: ScreenBufferPool) BufferPool.PoolStats {
-        return self.pool.get_stats();
-    }
-
-    /// Deinitialize pool
-    pub fn deinit(self: *ScreenBufferPool) void {
-        self.pool.deinit();
-    }
-};
-
-/// Variable-size buffer pool with multiple size categories
+/// Pool with variable buffer sizes
 pub const VariableBufferPool = struct {
+    const Self = @This();
+
+    buffers: std.ArrayList([]u8),
     allocator: std.mem.Allocator,
-    small_pool: BufferPool, // 256 bytes
-    medium_pool: BufferPool, // 1024 bytes
-    large_pool: BufferPool, // 4096 bytes
+    allocations: usize = 0,
+    deallocations: usize = 0,
+    reuses: usize = 0,
 
-    pub const SMALL_SIZE = 256;
-    pub const MEDIUM_SIZE = 1024;
-    pub const LARGE_SIZE = 4096;
-
-    /// Initialize variable buffer pool
-    pub fn init(allocator: std.mem.Allocator) VariableBufferPool {
-        return .{
+    pub fn init(allocator: std.mem.Allocator) Self {
+        return Self{
+            .buffers = std.ArrayList([]u8).init(allocator),
             .allocator = allocator,
-            .small_pool = BufferPool.init(allocator, SMALL_SIZE),
-            .medium_pool = BufferPool.init(allocator, MEDIUM_SIZE),
-            .large_pool = BufferPool.init(allocator, LARGE_SIZE),
         };
     }
 
-    /// Preallocate buffers in all pools
-    pub fn preallocate(self: *VariableBufferPool, small: usize, medium: usize, large: usize) !void {
-        try self.small_pool.preallocate(small);
-        try self.medium_pool.preallocate(medium);
-        try self.large_pool.preallocate(large);
-    }
-
-    /// Get appropriately-sized buffer
-    pub fn get(self: *VariableBufferPool, size: usize) ![]u8 {
-        if (size <= SMALL_SIZE) {
-            return self.small_pool.get();
-        } else if (size <= MEDIUM_SIZE) {
-            return self.medium_pool.get();
-        } else if (size <= LARGE_SIZE) {
-            return self.large_pool.get();
-        } else {
-            // Allocate directly for oversized requests
-            return self.allocator.alloc(u8, size);
+    pub fn deinit(self: *Self) void {
+        for (self.buffers.items) |buf| {
+            self.allocator.free(buf);
         }
+        self.buffers.deinit();
     }
 
-    /// Return buffer to appropriate pool
-    pub fn put(self: *VariableBufferPool, buffer: []u8) !void {
-        if (buffer.len <= SMALL_SIZE) {
-            try self.small_pool.put(buffer);
-        } else if (buffer.len <= MEDIUM_SIZE) {
-            try self.medium_pool.put(buffer);
-        } else if (buffer.len <= LARGE_SIZE) {
-            try self.large_pool.put(buffer);
-        } else {
-            // Free oversized directly
-            self.allocator.free(buffer);
+    /// Acquire a buffer of at least the requested size
+    pub fn acquire(self: *Self, min_size: usize) ![]u8 {
+        // Try to find a buffer that fits
+        var best_idx: ?usize = null;
+        var best_size: usize = std.math.maxInt(usize);
+
+        for (self.buffers.items, 0..) |buf, i| {
+            if (buf.len >= min_size and buf.len < best_size) {
+                best_idx = i;
+                best_size = buf.len;
+            }
         }
+
+        if (best_idx) |idx| {
+            const buf = self.buffers.orderedRemove(idx);
+            self.reuses += 1;
+            return buf;
+        }
+
+        self.allocations += 1;
+        return try self.allocator.alloc(u8, min_size);
     }
 
-    /// Deinitialize all pools
-    pub fn deinit(self: *VariableBufferPool) void {
-        self.small_pool.deinit();
-        self.medium_pool.deinit();
-        self.large_pool.deinit();
+    /// Return a buffer to the pool for reuse
+    pub fn release(self: *Self, buf: []u8) !void {
+        self.deallocations += 1;
+        try self.buffers.append(buf);
+    }
+
+    /// Get current pool size
+    pub fn poolSize(self: *const Self) usize {
+        return self.buffers.items.len;
+    }
+
+    /// Clear the pool and free all buffers
+    pub fn clear(self: *Self) void {
+        for (self.buffers.items) |buf| {
+            self.allocator.free(buf);
+        }
+        self.buffers.clearRetainingCapacity();
+    }
+
+    /// Print statistics
+    pub fn printStats(self: *const Self) void {
+        const hit_rate = if (self.allocations + self.reuses > 0)
+            @as(f64, @floatFromInt(self.reuses)) / @as(f64, @floatFromInt(self.allocations + self.reuses)) * 100.0
+        else
+            0.0;
+
+        std.debug.print(
+            "Variable Buffer Pool: {} allocations, {} reuses, {d:.1}% hit rate, {} in pool\n",
+            .{ self.allocations, self.reuses, hit_rate, self.poolSize() },
+        );
     }
 };
 
-// Tests
-test "buffer_pool: init creates empty pool" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
+test "buffer pool: fixed size pool basic operations" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var pool = CommandBufferPool.init(allocator, 1024);
     defer pool.deinit();
 
-    try std.testing.expectEqual(@as(usize, 0), pool.available.items.len);
-    try std.testing.expectEqual(@as(usize, 0), pool.in_use.items.len);
+    // First acquire: allocates
+    const buf1 = try pool.acquire();
+    try std.testing.expectEqual(@as(usize, 1), pool.allocations);
+    try std.testing.expectEqual(@as(usize, 0), pool.reuses);
+
+    // Release back to pool
+    try pool.release(buf1);
+    try std.testing.expectEqual(@as(usize, 1), pool.deallocations);
+
+    // Second acquire: reuses
+    const buf2 = try pool.acquire();
+    try std.testing.expectEqual(@as(usize, 1), pool.allocations);
+    try std.testing.expectEqual(@as(usize, 1), pool.reuses);
+
+    try pool.release(buf2);
 }
 
-test "buffer_pool: preallocate creates buffers" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
+test "buffer pool: variable size pool" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var pool = VariableBufferPool.init(allocator);
     defer pool.deinit();
 
-    try pool.preallocate(5);
+    // Acquire different sizes
+    const buf1 = try pool.acquire(512);
+    const buf2 = try pool.acquire(1024);
+    try std.testing.expectEqual(@as(usize, 2), pool.allocations);
 
-    try std.testing.expectEqual(@as(usize, 5), pool.available.items.len);
-    try std.testing.expectEqual(@as(usize, 0), pool.in_use.items.len);
+    // Release both
+    try pool.release(buf1);
+    try pool.release(buf2);
+
+    // Acquire fits the smaller one
+    const buf3 = try pool.acquire(256);
+    try std.testing.expectEqual(@as(usize, 512), buf3.len);
+    try std.testing.expectEqual(@as(usize, 1), pool.reuses);
+
+    try pool.release(buf3);
 }
 
-test "buffer_pool: get allocates from pool" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
+test "buffer pool: oversized buffer not reused" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var pool = CommandBufferPool.init(allocator, 256);
     defer pool.deinit();
 
-    try pool.preallocate(3);
+    // Acquire standard size
+    const buf = try pool.acquire();
+    try std.testing.expectEqual(@as(usize, 256), buf.len);
 
-    const buffer = try pool.get();
+    // Try to release wrong size buffer
+    const wrong_buf = try allocator.alloc(u8, 512);
+    try pool.release(wrong_buf);
 
-    try std.testing.expectEqual(@as(usize, 2), pool.available.items.len);
-    try std.testing.expectEqual(@as(usize, 1), pool.in_use.items.len);
-    try std.testing.expectEqual(@as(usize, 256), buffer.len);
-}
-
-test "buffer_pool: get allocates new when empty" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
-    defer pool.deinit();
-
-    const buffer = try pool.get();
-
-    try std.testing.expectEqual(@as(usize, 1), pool.in_use.items.len);
-    try std.testing.expectEqual(@as(usize, 256), buffer.len);
-    try std.testing.expectEqual(@as(u64, 1), pool.stats.allocations);
-    try std.testing.expectEqual(@as(u64, 1), pool.stats.pool_misses);
-}
-
-test "buffer_pool: put returns buffer to pool" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
-    defer pool.deinit();
-
-    const buffer = try pool.get();
-    try pool.put(buffer);
-
-    try std.testing.expectEqual(@as(usize, 1), pool.available.items.len);
-    try std.testing.expectEqual(@as(usize, 0), pool.in_use.items.len);
-    try std.testing.expectEqual(@as(u64, 1), pool.stats.deallocations);
-}
-
-test "buffer_pool: pool_hits increment on reuse" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
-    defer pool.deinit();
-
-    try pool.preallocate(1);
-    const buffer1 = try pool.get();
-    try pool.put(buffer1);
-    const buffer2 = try pool.get();
-
-    try std.testing.expectEqual(@as(u64, 1), pool.stats.pool_hits);
-    // Both should be same memory
-    try std.testing.expectEqual(buffer1.ptr, buffer2.ptr);
-}
-
-test "buffer_pool: drop frees buffer" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
-    defer pool.deinit();
-
-    const buffer = try pool.get();
-    try pool.drop(buffer);
-
-    try std.testing.expectEqual(@as(usize, 0), pool.available.items.len);
-    try std.testing.expectEqual(@as(usize, 0), pool.in_use.items.len);
-}
-
-test "buffer_pool: utilization calculation" {
-    var pool = BufferPool.init(std.testing.allocator, 256);
-    defer pool.deinit();
-
-    try pool.preallocate(10);
-    _ = try pool.get();
-    _ = try pool.get();
-    _ = try pool.get();
-
-    const util = pool.utilization();
-    try std.testing.expect(util > 0.0);
-    try std.testing.expect(util <= 100.0);
-}
-
-test "screen_buffer_pool: init creates pool" {
-    var pool = ScreenBufferPool.init(std.testing.allocator);
-    defer pool.deinit();
-
-    try pool.preallocate(3);
-    const buffer = try pool.get();
-
-    try std.testing.expectEqual(@as(usize, 1920), buffer.len);
-}
-
-test "variable_buffer_pool: selects correct size" {
-    var pool = VariableBufferPool.init(std.testing.allocator);
-    defer pool.deinit();
-
-    try pool.preallocate(2, 2, 2);
-
-    const small = try pool.get(128);
-    const medium = try pool.get(512);
-    const large = try pool.get(2048);
-
-    try std.testing.expectEqual(@as(usize, 256), small.len);
-    try std.testing.expectEqual(@as(usize, 1024), medium.len);
-    try std.testing.expectEqual(@as(usize, 4096), large.len);
-
-    try pool.put(small);
-    try pool.put(medium);
-    try pool.put(large);
-}
-
-test "variable_buffer_pool: handles oversized requests" {
-    var pool = VariableBufferPool.init(std.testing.allocator);
-    defer pool.deinit();
-
-    const oversized = try pool.get(16384);
-
-    try std.testing.expectEqual(@as(usize, 16384), oversized.len);
-
-    pool.allocator.free(oversized); // Free directly since not in pool
+    // Wrong size is freed, not added to pool
+    try std.testing.expectEqual(@as(usize, 0), pool.poolSize());
 }

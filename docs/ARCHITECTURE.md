@@ -6,6 +6,77 @@ Comprehensive system design documentation for the TN3270 emulator implementation
 
 The system follows a **layered architecture** with clear separation of concerns. Each layer has well-defined responsibilities and minimal coupling to other layers.
 
+```mermaid
+graph TD
+    subgraph "Application Layer<br/>(user interaction, main loop, client control)"
+        A1[main.zig]
+        A2[emulator.zig]
+        A3[root.zig]
+        A4[client.zig]
+        A5[client_example.zig]
+        A6[ghostty_vt_terminal.zig]
+        A7[ghostty_vt_example.zig]
+        A8[integration_test.zig]
+    end
+
+    subgraph "Domain Layer<br/>(screen model, fields, terminal state)"
+        D1[domain_layer.zig]
+        D2[screen.zig]
+        D3[field.zig]
+        D4[terminal.zig]
+        D5[executor.zig]
+        D6[data_entry.zig]
+        D7[field_cache.zig]
+        D8[field_storage.zig]
+        D9[screen_history.zig]
+        D10[session_storage.zig]
+    end
+
+    subgraph "Protocol Layer<br/>(TN3270 data stream, command parsing)"
+        P1[protocol_layer.zig]
+        P2[protocol.zig]
+        P3[parser.zig]
+        P4[parser_optimization.zig]
+        P5[stream_parser.zig]
+        P6[command.zig]
+        P7[parse_utils.zig]
+    end
+
+    subgraph "Network Layer<br/>(TCP connections, telnet negotiation)"
+        N1[network_resilience.zig]
+        N2[mock_server.zig]
+        N3[client_test.zig]
+    end
+
+    subgraph "Utility Layer<br/>(hex viewer, keyboard mapping, attributes)"
+        U1[attributes.zig]
+        U2[ansi_colors.zig]
+        U3[ebcdic.zig]
+        U4[debug_log.zig]
+        U5[error_context.zig]
+        U6[hex_viewer.zig]
+        U7[hex_viewer_example.zig]
+        U8[input.zig]
+        U9[keyboard_config.zig]
+        U10[profiler.zig]
+        U11[renderer.zig]
+        U12[benchmark.zig]
+        U13[benchmark_enhanced.zig]
+        U14[benchmark_optimization_impact.zig]
+        U15[buffer_pool.zig]
+        U16[allocation_tracker.zig]
+        U17[ghostty_vt_visual_test.zig]
+    end
+
+    A1 --> D1
+    A2 --> D1
+    A3 --> D1
+    A4 --> D1
+    D1 --> P1
+    P1 --> N1
+    N1 --> U1
+```
+
 ```
 ┌──────────────────────────────────────────────────┐
 │  Application Layer                               │

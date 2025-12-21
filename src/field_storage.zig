@@ -1,260 +1,187 @@
 const std = @import("std");
-const protocol = @import("protocol.zig");
-const attributes_mod = @import("attributes.zig");
 
-/// External field data storage to reduce per-field allocations
-/// Moves field data out of Field struct for better memory locality
+/// Handle to field data stored in external storage
+pub const FieldHandle = struct {
+    storage_id: u32,
+    offset: usize,
+    length: usize,
+};
+
+/// Externalizes field data to reduce allocations
+/// Instead of N allocations (one per field), uses a single buffer with range tracking
 pub const FieldDataStorage = struct {
+    const Self = @This();
+
     allocator: std.mem.Allocator,
-    data_buffer: []u8,
-    field_ranges: std.ArrayList(FieldRange),
-    total_size: usize,
+    data: []u8,
+    field_ranges: std.ArrayList([2]usize), // [offset, length] for each field
+    total_capacity: usize,
+    used: usize = 0,
 
-    pub const FieldRange = struct {
-        offset: usize,
-        length: usize,
-    };
+    pub fn init(allocator: std.mem.Allocator, capacity: usize) !Self {
+        const data = try allocator.alloc(u8, capacity);
+        @memset(data, ' ');
 
-    /// Initialize field storage with total capacity
-    pub fn init(allocator: std.mem.Allocator, capacity: usize) !FieldDataStorage {
-        return .{
+        return Self{
             .allocator = allocator,
-            .data_buffer = try allocator.alloc(u8, capacity),
-            .field_ranges = std.ArrayList(FieldRange).init(allocator),
-            .total_size = 0,
+            .data = data,
+            .field_ranges = std.ArrayList([2]usize).init(allocator),
+            .total_capacity = capacity,
         };
     }
 
-    /// Add field data and return handle
-    pub fn add_field(self: *FieldDataStorage, data: []const u8) !usize {
-        const handle = self.field_ranges.items.len;
+    pub fn deinit(self: *Self) void {
+        self.allocator.free(self.data);
+        self.field_ranges.deinit();
+    }
 
-        // Check capacity
-        if (self.total_size + data.len > self.data_buffer.len) {
-            return error.StorageFull;
+    /// Allocate space for a field and return a handle
+    pub fn allocate(self: *Self, size: usize) !FieldHandle {
+        if (self.used + size > self.total_capacity) {
+            return error.OutOfSpace;
         }
 
-        // Copy data
-        @memcpy(self.data_buffer[self.total_size .. self.total_size + data.len], data);
+        const handle = FieldHandle{
+            .storage_id = 0,
+            .offset = self.used,
+            .length = size,
+        };
 
-        // Record range
-        try self.field_ranges.append(.{
-            .offset = self.total_size,
-            .length = data.len,
-        });
-
-        self.total_size += data.len;
+        try self.field_ranges.append([2]usize{ self.used, size });
+        self.used += size;
         return handle;
     }
 
-    /// Get field data by handle
-    pub fn get_field(self: FieldDataStorage, handle: usize) ?[]u8 {
-        if (handle >= self.field_ranges.items.len) {
-            return null;
-        }
-
-        const range = self.field_ranges.items[handle];
-        return self.data_buffer[range.offset .. range.offset + range.length];
+    /// Get data slice for a field handle
+    pub fn getData(self: *Self, handle: FieldHandle) []u8 {
+        return self.data[handle.offset .. handle.offset + handle.length];
     }
 
-    /// Update field data by handle
-    pub fn update_field(self: *FieldDataStorage, handle: usize, data: []const u8) !void {
-        if (handle >= self.field_ranges.items.len) {
-            return error.InvalidHandle;
-        }
-
-        const range = self.field_ranges.items[handle];
-        if (data.len != range.length) {
-            return error.SizeeMismatch;
-        }
-
-        @memcpy(self.data_buffer[range.offset .. range.offset + range.length], data);
+    /// Get const data slice for a field handle
+    pub fn getDataConst(self: *const Self, handle: FieldHandle) []const u8 {
+        return self.data[handle.offset .. handle.offset + handle.length];
     }
 
-    /// Get field size by handle
-    pub fn get_field_size(self: FieldDataStorage, handle: usize) ?usize {
-        if (handle >= self.field_ranges.items.len) {
-            return null;
+    /// Set character in field data
+    pub fn setChar(self: *Self, handle: FieldHandle, offset: usize, char: u8) !void {
+        if (offset >= handle.length) {
+            return error.OutOfBounds;
         }
-        return self.field_ranges.items[handle].length;
+        self.data[handle.offset + offset] = char;
     }
 
-    /// Clear all fields
-    pub fn clear(self: *FieldDataStorage) void {
-        self.field_ranges.clearRetainingCapacity();
-        self.total_size = 0;
+    /// Get character from field data
+    pub fn getChar(self: *const Self, handle: FieldHandle, offset: usize) !u8 {
+        if (offset >= handle.length) {
+            return error.OutOfBounds;
+        }
+        return self.data[handle.offset + offset];
+    }
+
+    /// Copy data to field
+    pub fn copyData(self: *Self, handle: FieldHandle, source: []const u8) !void {
+        if (source.len > handle.length) {
+            return error.TooMuch;
+        }
+        @memcpy(self.data[handle.offset .. handle.offset + source.len], source);
     }
 
     /// Get memory usage statistics
-    pub fn get_stats(self: FieldDataStorage) StorageStats {
+    pub fn getStats(self: *const Self) struct { used: usize, capacity: usize, fields: usize } {
         return .{
-            .capacity = self.data_buffer.len,
-            .used = self.total_size,
-            .field_count = self.field_ranges.items.len,
-            .utilization_percent = @as(f32, @floatFromInt(self.total_size * 100)) /
-                @as(f32, @floatFromInt(self.data_buffer.len)),
+            .used = self.used,
+            .capacity = self.total_capacity,
+            .fields = self.field_ranges.items.len,
         };
     }
 
-    /// Deinitialize storage
-    pub fn deinit(self: *FieldDataStorage) void {
-        self.allocator.free(self.data_buffer);
-        self.field_ranges.deinit();
+    /// Print storage statistics
+    pub fn printStats(self: *const Self) void {
+        const usage_pct = @as(f64, @floatFromInt(self.used)) / @as(f64, @floatFromInt(self.total_capacity)) * 100.0;
+        std.debug.print(
+            "Field Storage: {} fields, {} bytes used / {} total ({d:.1}%)\n",
+            .{ self.field_ranges.items.len, self.used, self.total_capacity, usage_pct },
+        );
     }
 };
 
-pub const StorageStats = struct {
-    capacity: usize,
-    used: usize,
-    field_count: usize,
-    utilization_percent: f32,
-};
+test "field storage: basic allocation" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
 
-/// Field reference using externalized data storage
-pub const FieldHandle = struct {
-    storage: *FieldDataStorage,
-    handle: usize,
-    row: u16,
-    col: u16,
-    attr: attributes_mod.FieldAttribute,
+    var storage = try FieldDataStorage.init(allocator, 1920);
+    defer storage.deinit();
 
-    /// Get field data
-    pub fn get_data(self: FieldHandle) ?[]u8 {
-        return self.storage.get_field(self.handle);
+    const handle1 = try storage.allocate(40);
+    const handle2 = try storage.allocate(80);
+
+    const stats = storage.getStats();
+    try std.testing.expectEqual(@as(usize, 2), stats.fields);
+    try std.testing.expectEqual(@as(usize, 120), stats.used);
+}
+
+test "field storage: character operations" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var storage = try FieldDataStorage.init(allocator, 1920);
+    defer storage.deinit();
+
+    const handle = try storage.allocate(40);
+
+    // Set character
+    try storage.setChar(handle, 5, 'A');
+    const ch = try storage.getChar(handle, 5);
+    try std.testing.expectEqual(@as(u8, 'A'), ch);
+}
+
+test "field storage: copy data" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var storage = try FieldDataStorage.init(allocator, 1920);
+    defer storage.deinit();
+
+    const handle = try storage.allocate(40);
+    const test_data = "Hello";
+
+    try storage.copyData(handle, test_data);
+    const data = storage.getData(handle);
+    try std.testing.expectEqualSlices(u8, "Hello", data[0..5]);
+}
+
+test "field storage: out of bounds error" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var storage = try FieldDataStorage.init(allocator, 1920);
+    defer storage.deinit();
+
+    const handle = try storage.allocate(10);
+    const result = storage.setChar(handle, 20, 'A');
+
+    try std.testing.expectError(error.OutOfBounds, result);
+}
+
+test "field storage: single allocation vs multiple" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // Single storage: 1 allocation
+    var storage = try FieldDataStorage.init(allocator, 1920);
+    defer storage.deinit();
+
+    for (0..20) |_| {
+        _ = try storage.allocate(96);
     }
 
-    /// Get field size
-    pub fn get_size(self: FieldHandle) ?usize {
-        return self.storage.get_field_size(self.handle);
-    }
-
-    /// Update field data
-    pub fn set_data(self: FieldHandle, data: []const u8) !void {
-        try self.storage.update_field(self.handle, data);
-    }
-};
-
-// Tests
-test "field_data_storage: init creates buffer" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    try std.testing.expectEqual(@as(usize, 0), storage.total_size);
-    try std.testing.expectEqual(@as(usize, 0), storage.field_ranges.items.len);
-}
-
-test "field_data_storage: add_field stores data" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    const handle = try storage.add_field("Test Field");
-
-    try std.testing.expectEqual(@as(usize, 0), handle);
-    try std.testing.expectEqual(@as(usize, 10), storage.total_size);
-    try std.testing.expectEqual(@as(usize, 1), storage.field_ranges.items.len);
-}
-
-test "field_data_storage: get_field retrieves data" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    const handle = try storage.add_field("Hello");
-    const data = storage.get_field(handle);
-
-    try std.testing.expect(data != null);
-    try std.testing.expectEqualSlices(u8, "Hello", data.?);
-}
-
-test "field_data_storage: multiple fields" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    const h1 = try storage.add_field("Field 1");
-    const h2 = try storage.add_field("Field 2");
-    const h3 = try storage.add_field("Field 3");
-
-    try std.testing.expectEqual(@as(usize, 0), h1);
-    try std.testing.expectEqual(@as(usize, 1), h2);
-    try std.testing.expectEqual(@as(usize, 2), h3);
-
-    try std.testing.expectEqualSlices(u8, "Field 1", storage.get_field(h1).?);
-    try std.testing.expectEqualSlices(u8, "Field 2", storage.get_field(h2).?);
-    try std.testing.expectEqualSlices(u8, "Field 3", storage.get_field(h3).?);
-}
-
-test "field_data_storage: update_field modifies data" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    const handle = try storage.add_field("Hello");
-    try storage.update_field(handle, "World");
-
-    try std.testing.expectEqualSlices(u8, "World", storage.get_field(handle).?);
-}
-
-test "field_data_storage: get_field_size returns correct size" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    const h1 = try storage.add_field("Test");
-    const h2 = try storage.add_field("Longer Field");
-
-    try std.testing.expectEqual(@as(usize, 4), storage.get_field_size(h1).?);
-    try std.testing.expectEqual(@as(usize, 12), storage.get_field_size(h2).?);
-}
-
-test "field_data_storage: clear resets storage" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    _ = try storage.add_field("Data");
-    storage.clear();
-
-    try std.testing.expectEqual(@as(usize, 0), storage.total_size);
-    try std.testing.expectEqual(@as(usize, 0), storage.field_ranges.items.len);
-}
-
-test "field_data_storage: get_stats reports utilization" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    _ = try storage.add_field("Test");
-    const stats = storage.get_stats();
-
-    try std.testing.expectEqual(@as(usize, 1024), stats.capacity);
-    try std.testing.expectEqual(@as(usize, 4), stats.used);
-    try std.testing.expectEqual(@as(usize, 1), stats.field_count);
-}
-
-test "field_data_storage: error on full storage" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 10);
-    defer storage.deinit();
-
-    _ = try storage.add_field("12345");
-    const result = storage.add_field("67890abcdef");
-
-    try std.testing.expectError(error.StorageFull, result);
-}
-
-test "field_handle: access through handle" {
-    var storage = try FieldDataStorage.init(std.testing.allocator, 1024);
-    defer storage.deinit();
-
-    const handle = try storage.add_field("Test");
-    var attr: attributes_mod.FieldAttribute = undefined;
-    attr.intensified = false;
-    attr.protected = false;
-    attr.hidden = false;
-    attr.numeric = false;
-
-    var fh = FieldHandle{
-        .storage = &storage,
-        .handle = handle,
-        .row = 5,
-        .col = 10,
-        .attr = attr,
-    };
-
-    try std.testing.expectEqualSlices(u8, "Test", fh.get_data().?);
-    try std.testing.expectEqual(@as(usize, 4), fh.get_size().?);
+    const stats = storage.getStats();
+    try std.testing.expectEqual(@as(usize, 20), stats.fields);
+    // All in one buffer
+    try std.testing.expectEqual(@as(usize, 1920), stats.used);
 }

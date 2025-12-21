@@ -13,7 +13,12 @@ tasks:
     # === CODE QUALITY & TESTING ===
 
     loc:
-        desc: Count lines of code using tokei
+        desc: Count lines of code per extension for the whole repo (excluding vendors)
+        cmds:
+            - tokei --exclude vendor/ --exclude vendors/ .
+
+    loc-zig:
+        desc: Count lines of code in src/ files using tokei
         cmds:
             - tokei src/ --files
 
