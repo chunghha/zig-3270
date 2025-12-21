@@ -14,7 +14,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    
+
     // Try to add libghostty-vt as a dependency
     if (b.lazyDependency("libghostty_vt", .{
         .target = target,
@@ -29,7 +29,28 @@ pub fn build(b: *std.Build) void {
         .root_module = main_module,
     });
 
+    // Visual test for libghostty-vt integration
+    const ghostty_vt_visual_test_module = b.addModule("ghostty_vt_visual_test", .{
+        .root_source_file = b.path("src/ghostty_vt_visual_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // Add libghostty-vt to visual test module
+    if (b.lazyDependency("libghostty_vt", .{
+        .target = target,
+        .optimize = optimize,
+    })) |ghostty_dep| {
+        ghostty_vt_visual_test_module.addImport("ghostty_vt", ghostty_dep.module("ghostty-vt"));
+    }
+
+    const ghostty_vt_visual_test = b.addExecutable(.{
+        .name = "ghostty-vt-visual-test",
+        .root_module = ghostty_vt_visual_test_module,
+    });
+
     b.installArtifact(exe);
+    b.installArtifact(ghostty_vt_visual_test);
 
     // Run step
     const run_cmd = b.addRunArtifact(exe);
@@ -40,13 +61,18 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the 3270 emulator");
     run_step.dependOn(&run_cmd.step);
 
+    // Visual test run step
+    const run_ghostty_vt_test = b.addRunArtifact(ghostty_vt_visual_test);
+    const ghostty_vt_test_step = b.step("test-ghostty", "Run libghostty-vt visual integration test");
+    ghostty_vt_test_step.dependOn(&run_ghostty_vt_test.step);
+
     // Test step
     const test_module = b.addModule("test", .{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
-    
+
     // Add libghostty-vt to test module as well
     if (b.lazyDependency("libghostty_vt", .{
         .target = target,

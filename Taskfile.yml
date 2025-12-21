@@ -43,3 +43,8 @@ tasks:
         deps: [fmt, test, build]
         cmds:
             - echo "✓ Code formatted, tests passed, and built successfully"
+
+    test-ghostty:
+        desc: Visual test of libghostty-vt integration
+        cmds:
+            - zig build test-ghostty
