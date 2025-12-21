@@ -12,6 +12,11 @@ tasks:
 
     # === CODE QUALITY & TESTING ===
 
+    loc:
+        desc: Count lines of code using tokei
+        cmds:
+            - tokei src/ --files
+
     fmt:
         desc: Format Zig code using zig fmt
         cmds:
