@@ -11,6 +11,10 @@ const field = @import("field.zig");
 const executor = @import("executor.zig");
 const data_entry = @import("data_entry.zig");
 const attributes = @import("attributes.zig");
+const ghostty_vt_example = @import("ghostty_vt_example.zig");
+
+// Optional: libghostty-vt integration (only available if dependency is available)
+const has_ghostty_vt = @import("builtin").zig_backend != .other;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -32,6 +36,11 @@ pub fn main() !void {
     std.debug.print("=== 3270 Emulator ===\n", .{});
     std.debug.print("Screen: {}x{}\n", .{ scr.rows, scr.cols });
     std.debug.print("Modules: Screen, Parser, Input, Terminal, Field Manager\n", .{});
+    if (has_ghostty_vt) {
+        std.debug.print("libghostty-vt: Available\n", .{});
+    } else {
+        std.debug.print("libghostty-vt: Not integrated (optional)\n", .{});
+    }
 
     // Demo: create a field and write text
     _ = try field_mgr.add_field(0, 20, .{});
@@ -53,4 +62,5 @@ test {
     _ = @import("executor.zig");
     _ = @import("data_entry.zig");
     _ = @import("attributes.zig");
+    _ = ghostty_vt_example;
 }
