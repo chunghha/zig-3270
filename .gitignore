@@ -1,0 +1,41 @@
+# Zig build artifacts
+zig-cache/
+zig-out/
+.zig-cache/
+
+# Build output
+/build/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.dll
+
+# IDE and editor artifacts
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.sublime-project
+.sublime-workspace
+*.vim
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+
+# Linux
+.directory
+
+# Environment
+.env
+.env.local
+
+# Misc
+*.log
+.netrwhist
