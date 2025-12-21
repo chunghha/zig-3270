@@ -15,7 +15,7 @@ A high-performance TN3270 (3270 terminal) emulator written in Zig with comprehen
 ## Dependencies
 
 ### Required
-- **Zig** (master branch or 0.13+)
+- **Zig** 0.15.2 or later
 
 ### Optional
 - **libghostty-vt**: For advanced terminal integration and VT emulation
