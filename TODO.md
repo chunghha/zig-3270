@@ -376,6 +376,159 @@ task dev               # Format + test + build
 
 ---
 
+## Immediate Priorities (Week 1)
+
+### 1. Real Mainframe Testing with mvs38j.com
+**Status**: Completed with mock server  
+**Effort**: 1-2 hours  
+**Impact**: Validates TN3270 protocol implementation
+
+**Findings**:
+- ✓ Protocol implementation validates correctly with mock server
+- ✓ Screen parsing works correctly (captured 117-byte response)
+- ✓ Buffer address handling correct (SBA commands processed)
+- ✓ Text data correctly extracted and displayed
+- ✗ Real mainframe (mvs38j.com:23) unreachable from current network
+- ✓ DNS lookup works, IP resolves to 23.95.188.2
+- ✗ Port 23 connection times out (service appears offline)
+- ✓ Client gracefully handles connection failures
+
+**Test Results**:
+```
+Mock Server Test: ✓ PASSED
+- Connected successfully to 127.0.0.1:3270
+- Received 117 bytes of protocol data
+- Screen correctly parsed: "WELCOME TO 3270 EMULATOR TEST"
+- Second line correctly captured: "This is a test screen capture"
+- Field positioning (SBA) validated
+- Screen display rendering correct
+```
+
+**Validation Status**:
+- [x] Protocol negotiation succeeds (mock server)
+- [x] Screen parsing works correctly
+- [x] Text data extraction accurate
+- [x] Buffer address (SBA) handling correct
+- [x] Client connection handling robust
+- [?] Real mainframe compatibility (network unavailable)
+
+**Recommendation**: 
+Protocol implementation is sound. Real mainframe testing deferred due to network access limitations. When mainframe access becomes available, use:
+```bash
+task test-connection-custom -- <IP> <PORT>
+```
+
+---
+
+## Near-term Priorities (Weeks 2-4)
+
+### Priority A: Network Layer Polish (8-12 hours)
+
+1. **Connection Pooling** (3-4 hours)
+   - Reuse connections across multiple sessions
+   - Improve performance for repeated connects
+   - File: `src/client.zig` enhancement
+   - Tests: Mock server with connection reuse scenarios
+
+2. **Automatic Reconnection** (2-3 hours)
+   - Detect connection loss
+   - Retry with exponential backoff
+   - Preserve session state where possible
+   - Tests: Mock server disconnect simulation
+
+3. **Timeout Handling** (2-3 hours)
+   - Add read/write timeouts (configurable)
+   - Graceful degradation on timeout
+   - Tests: Slow mock server responses
+
+### Priority B: Real-World Validation (4-6 hours)
+
+1. **Extended Mainframe Testing** (2-3 hours)
+   - Test with multiple CICS/IMS transactions
+   - Validate complex screen layouts
+   - Test edge cases: empty screens, large fields
+   - Document findings and any protocol adjustments
+
+2. **Performance Profiling in Production** (2-3 hours)
+   - Measure actual parsing performance
+   - Identify memory allocation hotspots
+   - Compare to benchmarks in PERFORMANCE.md
+   - Update profiler with production data
+
+---
+
+## Medium-term Priorities (Months 2-3)
+
+### Priority C: User-Facing Features (Optional - 15-20 hours)
+
+Choose 2-3 based on user demand:
+
+1. **Keyboard Mapping Configuration UI** (3-4 hours)
+   - Replace hard-coded key bindings in `input.zig`
+   - Config file format: JSON or TOML
+   - Validation and error reporting
+   - New file: `src/keyboard_config.zig`
+   - Tests: Config parsing, validation, binding lookup
+
+2. **Screen History & Scrollback** (4-5 hours)
+   - Maintain buffer of previous screens
+   - Navigate backward/forward in history
+   - Configurable history size
+   - New file: `src/screen_history.zig`
+   - Tests: History management, navigation, memory limits
+
+3. **ANSI Color Support** (3-4 hours)
+   - Map 3270 field attributes to ANSI colors
+   - Terminal integration for rendering
+   - New file: `src/ansi_colors.zig`
+   - Tests: Attribute-to-color mapping, edge cases
+
+4. **Session Persistence** (5-6 hours)
+   - Save/restore terminal state to disk
+   - Recover from crashes
+   - New file: `src/session_storage.zig`
+   - Tests: Save/restore cycle, data integrity, recovery
+
+### Priority D: Performance Optimization (Recommended - 8-10 hours)
+
+High ROI improvements based on PERFORMANCE.md analysis:
+
+1. **Command Data Buffer Pooling** (3-4 hours)
+   - Reuse buffers in hot path (executor, parser)
+   - Reduce allocations per command
+   - Reference: PERFORMANCE.md hot path analysis
+   - New file: `src/buffer_pool.zig`
+   - Tests: Pool exhaustion, buffer reuse, correctness
+
+2. **Field Data Externalization** (2-3 hours)
+   - Move field data outside screen buffer
+   - Improve cache locality
+   - Reduce memory usage for large screens
+   - Refactor: `field.zig`, `executor.zig`
+
+3. **Parser Single-Pass Optimization** (2-3 hours)
+   - Profile actual parsing paths
+   - Optimize hot loops in `parser.zig`
+   - Consider SIMD for EBCDIC conversion
+   - Benchmark: Compare before/after
+
+---
+
+## Long-term Priorities (Months 4+)
+
+### Priority E: Protocol Extensions
+- Advanced structured fields (LU3 printing)
+- More sophisticated session negotiation
+- Graphics protocol support (optional)
+
+### Priority F: Documentation & Examples
+- User guide: Using the terminal emulator
+- API guide: Embedding zig-3270 in other projects
+- Advanced configuration examples
+- Performance tuning guide
+
+---
+
 ## Next 3 Months (Estimated)
 
 ### Month 1: Refactoring & Decoupling
