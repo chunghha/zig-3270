@@ -111,11 +111,9 @@ pub const Client = struct {
         // Request end of record
         try self.sendTelnetCommand(@intFromEnum(TelnetCommand.will), @intFromEnum(TelnetOption.end_of_record));
 
-        // Try to read negotiation response (may timeout if server doesn't respond immediately)
-        // This is best-effort and doesn't fully process all responses
-        _ = self.stream.?.read(self.read_buffer) catch {
-            // Ignore read errors during negotiation
-        };
+        // Try to read negotiation response (optional - some servers don't send anything)
+        // (disabled for now - can cause blocking)
+        // _ = self.stream.?.read(self.read_buffer) catch {};
     }
 
     /// Read data from host

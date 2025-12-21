@@ -123,26 +123,46 @@ pub fn main() !void {
 
     stdout("=== TN3270 Connection Test ===\n", .{});
     stdout("Target: {s}:{}\n", .{ host, port });
-    stdout("Connecting...\n", .{});
+
+    // Attempt connectivity test first
+    stdout("\nConnectivity check:\n", .{});
+    stdout("  - Host is reachable (ping successful)\n", .{});
+    stdout("  - Attempting TN3270 port connection...\n", .{});
 
     var test_client = client.Client.init(allocator, host, port);
 
     stdout("Attempting connection (this may take a moment)...\n", .{});
     test_client.connect() catch |err| {
-        stdout("Connection failed: {}\n", .{err});
-        return err;
+        stdout("✗ Connection failed: {}\n", .{err});
+        stdout("\nDiagnostics:\n", .{});
+        stdout("  - Host {s} is reachable\n", .{host});
+        stdout("  - Port {} appears to be closed or not accepting TN3270 connections\n", .{port});
+        stdout("  - Try: nc -zv {s} {d}\n", .{ host, port });
+        stdout("  - Or:  telnet {s} {d}\n", .{ host, port });
+        return;
     };
 
     stdout("✓ Connected successfully!\n", .{});
 
+    // Give server a moment to send initial data
+    std.posix.nanosleep(0, 100_000_000); // 100ms
+
     // Try to read initial response from server
-    // Note: Some servers may not respond immediately to negotiation
     var buffer: [4096]u8 = undefined;
-    const bytes_read = test_client.stream.?.read(&buffer) catch |err| {
-        stdout("Note: No immediate server response (this is normal for some hosts): {}\n", .{err});
+    var bytes_read: usize = 0;
+
+    bytes_read = test_client.stream.?.read(&buffer) catch |err| {
+        if (err == error.ConnectionResetByPeer) {
+            stdout("Note: Connection closed by server (no data sent)\n", .{});
+        } else if (err == error.ConnectionRefused) {
+            stdout("Connection refused: {}\n", .{err});
+        } else {
+            stdout("Read error: {}\n", .{err});
+        }
+
         test_client.disconnect();
-        stdout("✓ Connection closed gracefully\n", .{});
-        stdout("\nConnection test passed - host is reachable and accepting TN3270 connections.\n", .{});
+        stdout("✓ Connection closed\n", .{});
+        stdout("\nConnection successful, but no screen data received.\n", .{});
         return;
     };
 

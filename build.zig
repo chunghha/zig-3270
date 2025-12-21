@@ -61,9 +61,22 @@ pub fn build(b: *std.Build) void {
         .root_module = client_test_module,
     });
 
+    // Mock 3270 server for testing
+    const mock_server_module = b.addModule("mock_server", .{
+        .root_source_file = b.path("src/mock_server.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const mock_server_exe = b.addExecutable(.{
+        .name = "mock-server",
+        .root_module = mock_server_module,
+    });
+
     b.installArtifact(exe);
     b.installArtifact(ghostty_vt_visual_test);
     b.installArtifact(client_test_exe);
+    b.installArtifact(mock_server_exe);
 
     // Run step
     const run_cmd = b.addRunArtifact(exe);

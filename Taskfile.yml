@@ -58,3 +58,14 @@ tasks:
         desc: Test TN3270 connection to custom host (usage - task test-connection-custom -- host port)
         cmds:
             - zig build test-connection -- {{.CLI_ARGS}}
+
+    mock-server:
+        desc: Run mock 3270 server on localhost:3270 for testing
+        cmds:
+            - zig build
+            - ./zig-out/bin/mock-server
+
+    test-mock:
+        desc: Test connection to local mock 3270 server (requires mock-server running in another terminal)
+        cmds:
+            - ./zig-out/bin/client-test 127.0.0.1 3270
