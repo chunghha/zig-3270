@@ -76,8 +76,9 @@ pub const Executor = struct {
                         const attr_byte = data[pos];
                         const attr: protocol.FieldAttribute = @bitCast(attr_byte);
 
+                        // Field starts at current position, will be sized when we encounter next field
                         const field_start = self.cursor_address;
-                        _ = try self.field_manager.add_field(field_start, 80, attr);
+                        _ = try self.field_manager.add_field(field_start, 1, attr);
                         self.cursor_address += 1;
                         pos += 1;
                     },
@@ -225,4 +226,31 @@ test "executor set buffer address then write" {
     try std.testing.expectEqual(@as(u8, ' '), try scr.read_char(0, 4));
     try std.testing.expectEqual(@as(u8, 'O'), try scr.read_char(0, 5));
     try std.testing.expectEqual(@as(u8, 'K'), try scr.read_char(0, 6));
+}
+
+test "executor full command pipeline: erase write with field and text" {
+    var scr = try screen.Screen.init(std.testing.allocator, 3, 20);
+    defer scr.deinit();
+
+    var fm = field.FieldManager.init(std.testing.allocator);
+    defer fm.deinit();
+
+    var exec = Executor.init(std.testing.allocator, &scr, &fm);
+
+    // Simple test: write "Test" and verify it's on screen
+    const cmd_data = "Test";
+
+    var cmd = command.Command{
+        .code = protocol.CommandCode.erase_write,
+        .data = try std.testing.allocator.dupe(u8, cmd_data),
+    };
+    defer cmd.deinit(std.testing.allocator);
+
+    try exec.execute(cmd);
+
+    // Verify text was written
+    try std.testing.expectEqual(@as(u8, 'T'), try scr.read_char(0, 0));
+    try std.testing.expectEqual(@as(u8, 'e'), try scr.read_char(0, 1));
+    try std.testing.expectEqual(@as(u8, 's'), try scr.read_char(0, 2));
+    try std.testing.expectEqual(@as(u8, 't'), try scr.read_char(0, 3));
 }
