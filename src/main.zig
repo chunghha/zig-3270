@@ -8,6 +8,7 @@ const command = @import("command.zig");
 const stream_parser = @import("stream_parser.zig");
 const terminal = @import("terminal.zig");
 const field = @import("field.zig");
+const executor = @import("executor.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -47,4 +48,5 @@ test {
     _ = @import("stream_parser.zig");
     _ = @import("terminal.zig");
     _ = @import("field.zig");
+    _ = @import("executor.zig");
 }
