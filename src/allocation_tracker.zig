@@ -21,11 +21,12 @@ pub const AllocationTracker = struct {
                 .alloc = &allocFn,
                 .resize = &resizeFn,
                 .free = &freeFn,
+                .remap = &remapFn,
             },
         };
     }
 
-    fn allocFn(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+    fn allocFn(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
         var self: *AllocationTracker = @ptrCast(@alignCast(ctx));
         if (self.parent_allocator.rawAlloc(len, ptr_align, ret_addr)) |ptr| {
             self.allocations += 1;
@@ -38,7 +39,7 @@ pub const AllocationTracker = struct {
         return null;
     }
 
-    fn resizeFn(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+    fn resizeFn(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
         var self: *AllocationTracker = @ptrCast(@alignCast(ctx));
         if (self.parent_allocator.rawResize(buf, buf_align, new_len, ret_addr)) {
             if (new_len > buf.len) {
@@ -54,11 +55,20 @@ pub const AllocationTracker = struct {
         return false;
     }
 
-    fn freeFn(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+    fn freeFn(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
         var self: *AllocationTracker = @ptrCast(@alignCast(ctx));
         self.parent_allocator.rawFree(buf, buf_align, ret_addr);
         self.deallocations += 1;
         self.current_bytes -= buf.len;
+    }
+
+    fn remapFn(ctx: *anyopaque, old_mem: []u8, new_len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
+        _ = ctx;
+        _ = old_mem;
+        _ = new_len;
+        _ = alignment;
+        _ = ret_addr;
+        return null; // Not implemented
     }
 
     pub fn report(self: *const AllocationTracker) void {

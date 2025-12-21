@@ -6,23 +6,25 @@
 # Run all checks (format + tests)
 task check
 
-# Run tests only
-task test
+# Core testing tasks
+task test                    # all tests (unit + integration)
+task test:unit              # unit tests only (fastest)
+task test:integration         # integration tests only
 
-# Format code
-task fmt
+# Development workflow
+task dev                    # format → test → build
+task fmt                    # format code
+task build                  # build executable
+task run                    # run emulator
 
-# Full development workflow (format + test + build)
-task dev
+# Performance testing
+task benchmark               # all 19 performance benchmarks
+task benchmark:report         # complete performance analysis
+task profile                 # detailed performance profiling
 
-# Build executable
-task build
-
-# Run the emulator
-task run
-
-# Count lines of code
-task loc
+# Code analysis
+task loc                    # whole repo line count
+task loc:zig                # src/ line count only
 
 # View all available tasks
 task --list
