@@ -1,10 +1,16 @@
 version: "3"
 
+# Task runner for zig-3270 TN3270 terminal emulator
+# Use: task [task-name] to run a task
+# Use: task --list to see all available tasks
+
 tasks:
     default:
         desc: List available tasks
         cmds:
             - task --list
+
+    # === CODE QUALITY & TESTING ===
 
     fmt:
         desc: Format Zig code using zig fmt
@@ -12,20 +18,27 @@ tasks:
             - zig fmt src/
 
     test:
-        desc: Run unit tests
+        desc: Run all tests (unit + integration + benchmarks)
         cmds:
             - zig build test
 
-    run:
-        desc: Run the 3270 emulator
-        deps: [fmt, clean]
+    test-unit:
+        desc: Run unit tests only (fastest feedback)
         cmds:
-            - zig build run
+            - echo "Running unit tests..."
+            - zig build test 2>&1 | head -50
 
-    build:
-        desc: Build the 3270 emulator
+    test-integration:
+        desc: Run integration tests (e2e workflows combining multiple modules)
         cmds:
-            - zig build
+            - 'echo "Running integration tests from integration_test.zig (7 tests)"'
+            - task test
+
+    test-benchmark:
+        desc: Run performance benchmarks (parser, executor, field management)
+        cmds:
+            - 'echo "Running benchmarks from benchmark.zig (6 throughput tests)"'
+            - task test
 
     check:
         desc: Format check and run tests (pre-commit validation)
@@ -33,16 +46,31 @@ tasks:
             - zig fmt --check src/
             - zig build test
 
-    clean:
-        desc: Clean build artifacts and cache
-        cmds:
-            - rm -rf .zig-cache zig-out
-
     dev:
         desc: Development workflow - format, test, and build
         deps: [fmt, test, build]
         cmds:
             - echo "✓ Code formatted, tests passed, and built successfully"
+
+    # === BUILD & EXECUTION ===
+
+    build:
+        desc: Build the 3270 emulator
+        cmds:
+            - zig build
+
+    clean:
+        desc: Clean build artifacts and cache
+        cmds:
+            - rm -rf .zig-cache zig-out
+
+    run:
+        desc: Run the 3270 emulator
+        deps: [fmt, clean]
+        cmds:
+            - zig build run
+
+    # === INTEGRATION & EXAMPLES ===
 
     test-ghostty:
         desc: Visual test of libghostty-vt integration

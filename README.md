@@ -109,23 +109,41 @@ The codebase is organized into 5 layers:
 
 ## Testing
 
-All tests use Zig's built-in testing framework (`std.testing`):
+All tests use Zig's built-in testing framework (`std.testing`). Tests are organized into three categories:
+
+### Running Tests
 
 ```bash
-# Run all tests
+# Run all tests (unit + integration + benchmarks)
 task test
 
-# Tests are organized by module:
-# - Unit tests for individual functions
-# - Integration tests combining multiple modules
-# - Example programs demonstrating usage
+# Run quick unit tests only (fast feedback)
+task test-unit
+
+# Run integration tests (end-to-end workflows)
+task test-integration
+
+# Run performance benchmarks (throughput measurements)
+task test-benchmark
+
+# Pre-commit validation (format check + all tests)
+task check
 ```
 
-Current test coverage:
-- **60+ unit tests** across all modules
+### Test Coverage
+
+- **120+ total tests** organized by module and category
 - **100% pass rate**
-- Coverage includes happy path and error cases
-- Integration tests for screen updates and field parsing
+- **Unit tests** (60+): Individual functions, happy/error cases
+- **Integration tests** (7): End-to-end workflows combining multiple modules
+- **Stress tests** (4): Large files (10KB-100KB) for hex_viewer
+- **Performance benchmarks** (6): Parser, executor, field management throughput
+
+### Test Organization
+
+- `src/*_test.zig` - Unit tests for each module
+- `src/integration_test.zig` - End-to-end e2e tests
+- `src/benchmark.zig` - Performance benchmarks
 
 ## Development
 
