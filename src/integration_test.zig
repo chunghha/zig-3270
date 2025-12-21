@@ -1,14 +1,18 @@
 const std = @import("std");
 const emulator = @import("emulator.zig");
+const protocol_layer = @import("protocol_layer.zig");
+const domain_layer = @import("domain_layer.zig");
 const protocol = @import("protocol.zig");
 const command_mod = @import("command.zig");
 const executor = @import("executor.zig");
 const screen = @import("screen.zig");
 const field = @import("field.zig");
+const terminal_mod = @import("terminal.zig");
 const parse_utils = @import("parse_utils.zig");
 
 // End-to-end integration tests combining multiple modules
 // Tests full workflows: screen updates, field parsing, command execution
+// Validates protocol_layer and domain_layer facades work correctly together
 
 test "full screen update cycle: erase write with field and data" {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -238,4 +242,221 @@ test "full workflow: screen initialization, updates, and field management" {
 
     // Render
     try emu.render();
+}
+
+// ============================================================================
+// NEW E2E TESTS FOR LAYER FACADES
+// ============================================================================
+
+test "layer facade integration: protocol_layer with domain_layer" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // Create screen (domain layer)
+    var scr = try domain_layer.Screen.init(allocator, 24, 80);
+    defer scr.deinit();
+
+    // Create executor (domain layer)
+    var fm = domain_layer.FieldManager.init(allocator);
+    defer fm.deinit();
+    var exec = domain_layer.Executor.init(allocator, &scr, &fm);
+
+    // Build command using protocol layer
+    var order_data = std.ArrayList(u8).init(allocator);
+    defer order_data.deinit();
+
+    try order_data.append(0x11); // Set Buffer Address
+    try order_data.append(0x00);
+    try order_data.append(0x00);
+    try order_data.appendSlice("LayerTest");
+
+    // Create command using protocol layer
+    const cmd = protocol_layer.Command{
+        .code = protocol_layer.CommandCode.write,
+        .data = try allocator.dupe(u8, order_data.items),
+    };
+    defer allocator.free(cmd.data);
+
+    // Execute through domain layer
+    try exec.execute(cmd);
+
+    // Verify through domain layer
+    try std.testing.expectEqual(@as(u8, 'L'), try scr.read_char(0, 0));
+    try std.testing.expectEqual(@as(u8, 'a'), try scr.read_char(0, 1));
+}
+
+test "e2e: complex screen with multiple fields and cursor movement" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var emu = try emulator.Emulator.init(allocator, 24, 80);
+    defer emu.deinit();
+
+    var exec = executor.Executor.init(allocator, &emu.screen_buffer, &emu.field_manager);
+
+    // Create multi-field screen: label + input on line 0, another field on line 1
+    var order_data = std.ArrayList(u8).init(allocator);
+    defer order_data.deinit();
+
+    // Line 1: Protected label
+    try order_data.append(0x11); // Set Buffer Address (0,0)
+    try order_data.append(0x00);
+    try order_data.append(0x00);
+    try order_data.append(0x1D); // Start Field
+    try order_data.append(0x01); // Protected
+    try order_data.appendSlice("Name: ");
+
+    // Line 1: Unprotected input
+    try order_data.append(0x11); // Set Buffer Address (0,6)
+    try order_data.append(0x00);
+    try order_data.append(0x06);
+    try order_data.append(0x1D); // Start Field
+    try order_data.append(0x00); // Unprotected
+    try order_data.appendSlice("__________");
+
+    // Line 2: Another field
+    try order_data.append(0x11); // Set Buffer Address (1,0)
+    try order_data.append(0x00);
+    try order_data.append(0x50); // 80 in decimal = row 1
+    try order_data.append(0x1D); // Start Field
+    try order_data.append(0x00); // Unprotected
+    try order_data.appendSlice("Comments: ");
+
+    const cmd = command_mod.Command{
+        .code = protocol.CommandCode.write,
+        .data = try allocator.dupe(u8, order_data.items),
+    };
+    defer allocator.free(cmd.data);
+
+    try exec.execute(cmd);
+
+    // Verify field structure
+    try std.testing.expect(emu.field_count() >= 3);
+
+    // Verify screen content
+    try std.testing.expectEqual(@as(u8, 'N'), try emu.read_char(0, 0));
+    try std.testing.expectEqual(@as(u8, '_'), try emu.read_char(0, 6));
+    try std.testing.expectEqual(@as(u8, 'C'), try emu.read_char(1, 0));
+}
+
+test "e2e: sequential commands (erase write then write)" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var emu = try emulator.Emulator.init(allocator, 24, 80);
+    defer emu.deinit();
+
+    var exec = executor.Executor.init(allocator, &emu.screen_buffer, &emu.field_manager);
+
+    // First command: Erase Write with initial content
+    var order_data1 = std.ArrayList(u8).init(allocator);
+    defer order_data1.deinit();
+
+    try order_data1.append(0x11);
+    try order_data1.append(0x00);
+    try order_data1.append(0x00);
+    try order_data1.appendSlice("Screen 1");
+
+    const cmd1 = command_mod.Command{
+        .code = protocol.CommandCode.erase_write,
+        .data = try allocator.dupe(u8, order_data1.items),
+    };
+    defer allocator.free(cmd1.data);
+
+    try exec.execute(cmd1);
+
+    // Verify first screen
+    try std.testing.expectEqual(@as(u8, 'S'), try emu.read_char(0, 0));
+
+    // Second command: Write (partial update without erase)
+    var order_data2 = std.ArrayList(u8).init(allocator);
+    defer order_data2.deinit();
+
+    try order_data2.append(0x11); // Set address to (0, 10)
+    try order_data2.append(0x00);
+    try order_data2.append(0x0A);
+    try order_data2.appendSlice("Updated");
+
+    const cmd2 = command_mod.Command{
+        .code = protocol.CommandCode.write,
+        .data = try allocator.dupe(u8, order_data2.items),
+    };
+    defer allocator.free(cmd2.data);
+
+    try exec.execute(cmd2);
+
+    // Verify: old content at (0,0) should still exist
+    try std.testing.expectEqual(@as(u8, 'S'), try emu.read_char(0, 0));
+    // New content at (0,10)
+    try std.testing.expectEqual(@as(u8, 'U'), try emu.read_char(0, 10));
+}
+
+test "e2e: protocol layer command parsing through executor" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var emu = try emulator.Emulator.init(allocator, 24, 80);
+    defer emu.deinit();
+
+    // Test parsing valid command codes
+    const write_code = try parse_utils.parse_command_code(0x01);
+    try std.testing.expectEqual(protocol.CommandCode.write, write_code);
+
+    const read_code = try parse_utils.parse_command_code(0x06);
+    try std.testing.expectEqual(protocol.CommandCode.read_modified, read_code);
+
+    // Test parsing valid order codes
+    const sba_code = try parse_utils.parse_order_code(0x11);
+    try std.testing.expectEqual(protocol.OrderCode.set_buffer_address, sba_code);
+
+    const sf_code = try parse_utils.parse_order_code(0x1D);
+    try std.testing.expectEqual(protocol.OrderCode.start_field, sf_code);
+}
+
+test "e2e: terminal state with screen updates" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // Create screen and terminal
+    var scr = try domain_layer.Screen.init(allocator, 24, 80);
+    defer scr.deinit();
+
+    const term = domain_layer.Terminal.init(allocator, &scr);
+
+    // Verify initial state
+    try std.testing.expectEqual(@as(u16, 0), term.cursor_row);
+    try std.testing.expectEqual(@as(u16, 0), term.cursor_col);
+
+    // Write through terminal
+    try term.write_string("Terminal Test");
+
+    // Verify text was written to screen
+    try std.testing.expectEqual(@as(u8, 'T'), try scr.read_char(0, 0));
+    try std.testing.expectEqual(@as(u8, 'e'), try scr.read_char(0, 1));
+}
+
+test "e2e: address conversion round-trip with protocol layer" {
+    // Verify address conversion works correctly for all screen positions
+    for (0..24) |row| {
+        for (0..80) |col| {
+            const orig_addr = protocol_layer.Address{
+                .row = @as(u8, @truncate(row)),
+                .col = @as(u8, @truncate(col)),
+            };
+
+            // Convert to buffer position
+            const buf_pos = parse_utils.address_to_buffer(orig_addr);
+
+            // Convert back
+            const new_addr = parse_utils.buffer_to_address(buf_pos);
+
+            try std.testing.expectEqual(orig_addr.row, new_addr.row);
+            try std.testing.expectEqual(orig_addr.col, new_addr.col);
+        }
+    }
 }
