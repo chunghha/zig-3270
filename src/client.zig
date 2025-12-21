@@ -59,8 +59,14 @@ pub const Client = struct {
 
     /// Connect to the host
     pub fn connect(self: *Client) !void {
-        const address = try std.net.Address.parseIp(self.host, self.port);
-        self.stream = try address.connect();
+        // Try to parse as IP address first
+        const address = std.net.Address.parseIp(self.host, self.port) catch |err| {
+            std.debug.print("Note: Could not parse as IP address: {}\n", .{err});
+            std.debug.print("Please provide an IP address (DNS resolution not yet supported).\n", .{});
+            return error.InvalidAddress;
+        };
+
+        self.stream = try std.net.tcpConnectToAddress(address);
         self.connected = true;
 
         // Allocate read buffer
@@ -105,8 +111,11 @@ pub const Client = struct {
         // Request end of record
         try self.sendTelnetCommand(@intFromEnum(TelnetCommand.will), @intFromEnum(TelnetOption.end_of_record));
 
-        // Read negotiation response (basic, doesn't fully process all responses)
-        _ = try self.stream.?.readAll(self.read_buffer);
+        // Try to read negotiation response (may timeout if server doesn't respond immediately)
+        // This is best-effort and doesn't fully process all responses
+        _ = self.stream.?.read(self.read_buffer) catch {
+            // Ignore read errors during negotiation
+        };
     }
 
     /// Read data from host
@@ -115,7 +124,8 @@ pub const Client = struct {
             return error.NotConnected;
         }
 
-        return try self.stream.?.readAll(self.read_buffer);
+        const bytes_read = try self.stream.?.read(self.read_buffer);
+        return self.read_buffer[0..bytes_read];
     }
 
     /// Send data to host

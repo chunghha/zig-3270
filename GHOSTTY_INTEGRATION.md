@@ -94,11 +94,51 @@ task build         # Build the 3270 emulator
 task run           # Run the 3270 emulator
 task test          # Run all unit tests
 task test-ghostty  # Visual test of libghostty-vt integration
+task test-connection          # Test TN3270 connection to public mainframe (mvs38j.com)
+task test-connection-custom   # Test TN3270 connection to custom host (usage: task test-connection-custom -- IP port)
 task fmt           # Format code with zig fmt
 task check         # Pre-commit validation (format + test)
 task clean         # Clean build artifacts
 task dev           # Full dev workflow (format + test + build)
 ```
+
+## Testing Mainframe Connections
+
+### Prerequisites
+
+The connection tester requires an IP address (DNS resolution not yet supported). If you have a domain name, resolve it to an IP first:
+
+```bash
+# Resolve domain to IP
+nslookup mvs38j.com
+# or
+dig mvs38j.com
+```
+
+### Test with Default Public Mainframe
+
+Test connection to mvs38j.com (104.196.211.220), a public IBM mainframe emulator:
+
+```bash
+task test-connection
+
+# Or with timeout to prevent hanging
+timeout 10 task test-connection
+```
+
+### Test with Custom Host
+
+Test connection to any TN3270 mainframe:
+
+```bash
+# Usage: task test-connection-custom -- IP_ADDRESS PORT
+task test-connection-custom -- 192.168.1.100 3270
+```
+
+### Example Public Mainframes (IPs required)
+
+- **mvs38j.com** (IBM MVS 3.8j emulator): `104.196.211.220:3270`
+- Most require an IP address due to DNS limitations in current build
 
 ## Why libghostty-vt?
 

@@ -48,3 +48,13 @@ tasks:
         desc: Visual test of libghostty-vt integration
         cmds:
             - zig build test-ghostty
+
+    test-connection:
+        desc: Test TN3270 connection to public mainframe (mvs38j.com:3270)
+        cmds:
+            - zig build test-connection
+
+    test-connection-custom:
+        desc: Test TN3270 connection to custom host (usage - task test-connection-custom -- host port)
+        cmds:
+            - zig build test-connection -- {{.CLI_ARGS}}
