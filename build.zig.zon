@@ -34,7 +34,7 @@
     .dependencies = .{
         .libghostty_vt = .{
             .url = "https://github.com/ghostty-org/ghostty/archive/refs/heads/main.tar.gz",
-            .hash = "12202cc96b3ab6ff8364cf022ce28e51d3f9556146dffcc9debfd4ceb086d9e9eb45",
+            .hash = "12205121f1357088948673853cb68d4d8a270358831ef46f5c903e04843abe45dc6c",
             .lazy = true,
         },
     },
