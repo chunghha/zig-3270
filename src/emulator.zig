@@ -1,16 +1,16 @@
 const std = @import("std");
-const screen = @import("screen.zig");
-const terminal = @import("terminal.zig");
-const field = @import("field.zig");
 const input = @import("input.zig");
-const parser = @import("parser.zig");
-const stream_parser = @import("stream_parser.zig");
-const executor = @import("executor.zig");
-const command = @import("command.zig");
-const data_entry = @import("data_entry.zig");
-const protocol = @import("protocol.zig");
-const renderer = @import("renderer.zig");
+const protocol_layer = @import("protocol_layer.zig");
+const domain_layer = @import("domain_layer.zig");
 const attributes = @import("attributes.zig");
+
+// Re-export types for backward compatibility
+const protocol = protocol_layer;
+const screen = domain_layer;
+const terminal = domain_layer;
+const field = domain_layer;
+const executor = domain_layer;
+const renderer = domain_layer;
 
 /// High-level 3270 emulator facade
 /// Combines screen, terminal, field, and input management into a single interface.

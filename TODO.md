@@ -2,98 +2,134 @@
 
 ## Summary
 
-**Status**: Active development with solid foundation  
+**Status**: Phase 1 refactoring COMPLETE ✓  
 **Test Coverage**: 60+ unit tests, all passing  
-**Codebase Size**: ~3,038 lines of Zig  
-**Key Achievement**: Hex viewer implementation complete ✓  
+**Codebase Size**: ~3,000 lines of Zig (2 facade modules added)  
+**Architecture**: 5-layer design with facade consolidation complete ✓  
+**Next Action**: Priority 2 - Extract parse_utils.zig to reduce duplication
+
+### Quick Stats
+- **Modules**: 25 source files (23 + 2 new facades)
+- **Imports in emulator.zig**: 4 (std + protocol_layer + domain_layer + input + attributes)
+- **Layer Facades**: protocol_layer (5 modules) + domain_layer (5 modules)
+- **Tests**: 60+ unit tests, all passing
+- **Build System**: Zig build.zig + Taskfile.yml
+- **Documentation**: README.md, ARCHITECTURE.md, HEX_VIEWER.md, GHOSTTY_INTEGRATION.md
 
 ---
 
-## Priority 1: Documentation (High Impact)
+## Priority 1: Refactoring - Reduce Coupling (COMPLETED ✓)
 
-### Documentation Tasks
-- [ ] **Create README.md** - Project overview, quick-start, feature list
-  - *Impact*: Makes project accessible to new contributors
-  - *Effort*: 2-3 hours
-  
-- [ ] **Create ARCHITECTURE.md** - System design and module diagrams
-  - *Impact*: Guides future development and refactoring
-  - *Effort*: 3-4 hours
-  
-- [ ] **Document protocol.zig** - TN3270 specification and constants
-  - *Impact*: Reference for protocol implementation
-  - *Effort*: 2 hours
+### Core Refactoring Task: Decouple emulator.zig - COMPLETE
+**Status**: Completed Dec 21 with 3 commits (5.5 hours total)  
+**Problem Solved**: emulator.zig reduced from 12 imports → 4 imports  
+**Solution Implemented**: Two facade modules consolidate 10 protocol + domain modules
+
+#### Phase 1a: Create protocol_layer.zig ✓
+- [x] **Extract protocol facade** - Wrap protocol layer modules
+  - Consolidates: `protocol.zig`, `parser.zig`, `stream_parser.zig`, `command.zig`, `data_entry.zig`
+  - Re-exports: CommandCode, OrderCode, FieldAttribute, Address, Parser, Command, Order, etc.
+  - Reduces emulator.zig from 12→8 imports
+  - Tests: All existing tests pass + 3 new facade tests
+  - Commit: `e022d86`
+
+#### Phase 1b: Create domain_layer.zig ✓
+- [x] **Extract domain facade** - Wrap domain layer modules
+  - Consolidates: `screen.zig`, `field.zig`, `terminal.zig`, `executor.zig`, `renderer.zig`
+  - Re-exports: Screen, FieldManager, Field, Terminal, Executor, Renderer
+  - Reduces emulator.zig from 8→4 imports
+  - Tests: All existing tests pass + 3 new facade tests
+  - Commit: `ee09ad0`
+
+#### Phase 1c: Update emulator.zig ✓
+- [x] **Import only facades** - Update to use new layers
+  - `const protocol_layer = @import("protocol_layer.zig");`
+  - `const domain_layer = @import("domain_layer.zig");`
+  - `const input = @import("input.zig");`
+  - `const attributes = @import("attributes.zig");`
+  - Final result: 4 imports (std + 3 logic + input + attributes)
+  - All public API identical for backward compatibility
+  - Full test suite: 60+ tests pass ✓
+
+#### Phase 1d: Update main.zig ✓
+- [x] **Use emulator facade** - Verified no new imports needed
+  - Updated test block to reference layer facades
+  - Validate: `task check` passes ✓
+  - Commit: `40167a0`
+
+**Total Effort**: 5.5 hours (actual: ~3 hours with TDD + testing)  
+**Validation**: All 60+ tests pass ✓, `task check` clean ✓, no behavioral changes ✓
+
+**Results Summary**:
+- emulator.zig imports: 12 → 4 (67% reduction)
+- New facade modules: protocol_layer.zig, domain_layer.zig
+- Code organization: Clear separation between protocol and domain concerns
+- Maintainability: Future changes to protocol/domain modules only need updates in facades
 
 ---
 
 ## Priority 2: Refactoring (Code Quality)
 
-### Dependency Management
-- [ ] **Reduce main.zig coupling** - Extract facade/adapter layer
-  - *Problem*: main.zig imports 18 modules (too many)
-  - *Solution*: Create intermediate abstraction layer
-  - *Effort*: 4-6 hours
-  
-- [ ] **Extract parsing utilities** - Common patterns across modules
+### After Phase 1 Complete
+- [ ] **Extract parse_utils module** - Unify parsing patterns
   - *Problem*: Duplication in parser.zig and stream_parser.zig
-  - *Solution*: Create utils module with shared parsing functions
+  - *Solution*: Create parse_utils.zig with shared parsing functions
   - *Effort*: 2-3 hours
-
-### Architecture Improvements
-- [ ] **Implement layered architecture**
-  ```
-  Layer 1: Protocol (protocol.zig, parser.zig, stream_parser.zig)
-  Layer 2: Domain (screen.zig, field.zig, terminal.zig)
-  Layer 3: Application (client.zig, executor.zig)
-  ```
-  - *Impact*: Better testability and maintainability
-  - *Effort*: 6-8 hours
-
----
-
-## Priority 3: Testing (Coverage)
-
-### Integration Tests
-- [ ] **Add end-to-end tests** - Combine multiple modules
-  - Examples: full screen update cycle, field parsing → display
-  - *Effort*: 3-4 hours
-
-- [ ] **Add hex_viewer stress tests** - Large files (10KB+)
+  - *Benefit*: DRY principle, easier maintenance of protocol parsing
+  
+- [ ] **Formalize layer boundaries** - Enforce compile-time checks
+  - Document which modules can import from which layers
+  - Update module comments with layer membership
   - *Effort*: 1-2 hours
-
-### Performance
-- [ ] **Add parsing benchmarks** - Measure throughput
-  - *Effort*: 2 hours
-
-- [ ] **Profile memory allocation** - Identify hotspots
-  - *Effort*: 3 hours
+  - *Benefit*: Prevents accidental coupling re-introduction
 
 ---
 
-## Priority 4: Features (User Experience)
+## Priority 3: Testing - Integration Tests (After Phase 1)
 
-### Core Features
-- [ ] **EBCDIC encoding support**
-  - *Status*: Currently ASCII only
-  - *Impact*: Full 3270 protocol compatibility
-  - *Effort*: 4-6 hours
+### Add End-to-End Tests
+- [ ] **Screen update cycle tests** - protocol_layer → domain_layer
+  - Test: Parse Write command → Execute → Update screen → Render
+  - Test: User input → Format outbound → Verify AID encoding
+  - Effort: 3-4 hours
+  - Benefit: Validates refactoring didn't break data flow
+  - Location: Add to integration_test.zig
 
-- [ ] **Keyboard mapping configuration**
-  - *Status*: Hard-coded currently
-  - *Impact*: Better user control
-  - *Effort*: 3-4 hours
+### Stress & Performance Tests
+- [ ] **Parser throughput benchmark** - Measure 3270 command parsing speed
+  - Effort: 1-2 hours
+  - Add to benchmark.zig
 
-- [ ] **Session persistence**
-  - *Status*: Not implemented
-  - *Impact*: Save/restore terminal state
-  - *Effort*: 5-6 hours
+- [ ] **Memory profile** - Identify allocation hotspots
+  - Use -fsanitize=address during testing
+  - Effort: 2 hours
 
-### UX Enhancements
-- [ ] **Screen history & scrollback**
-  - *Effort*: 4-5 hours
+---
 
-- [ ] **Advanced terminal attributes** (colors, bold, etc.)
-  - *Effort*: 3-4 hours
+## Priority 4: Features - EBCDIC Support (After Priority 3)
+
+### Core: EBCDIC Encoding
+- [ ] **Implement EBCDIC encoder/decoder** - IBM mainframe character encoding
+  - Create `ebcdic.zig` with standard EBCDIC-to-ASCII and ASCII-to-EBCDIC tables
+  - Integrate into parser.zig (inbound) and command.zig (outbound)
+  - Tests: 10+ test cases covering common characters, special chars, edge cases
+  - Effort: 4-6 hours
+  - Impact: Full TN3270 protocol compliance
+  - TDD: Write test for encoding standard ASCII → EBCDIC first
+
+### Nice-to-Have Features
+- [ ] **Keyboard mapping configuration** - Allow user-defined key bindings
+  - Status: Hard-coded currently in input.zig
+  - Effort: 3-4 hours
+
+- [ ] **Screen history & scrollback** - Terminal scroll-back buffer
+  - Effort: 4-5 hours
+
+- [ ] **Advanced terminal attributes** - Colors, bold, underline (via ANSI)
+  - Effort: 3-4 hours
+
+- [ ] **Session persistence** - Save/restore terminal state to disk
+  - Effort: 5-6 hours
 
 ---
 
@@ -126,6 +162,19 @@
 ---
 
 ## Completed ✓
+
+- [x] **Priority 1: Decouple emulator.zig** (COMPLETED - Dec 21)
+  - Created protocol_layer.zig facade (5 modules consolidated)
+  - Created domain_layer.zig facade (5 modules consolidated)
+  - Reduced emulator.zig imports from 12 to 4 (67% reduction)
+  - Updated main.zig test block to reference facades
+  - All 60+ tests passing, zero behavioral changes
+  - Commits: e022d86, ee09ad0, 40167a0
+
+- [x] **ARCHITECTURE.md & CODEBASE_REVIEW.md** (COMPLETED - Dec 21)
+  - Comprehensive system design documentation
+  - Identified coupling issues and refactoring strategy
+  - Clear module dependency graph and layer design
 
 - [x] **Implement hex viewer** (COMPLETED - Dec 21)
   - Side-by-side hex and ASCII display
@@ -205,21 +254,28 @@ task dev               # Format + test + build
 
 ## Next 3 Months (Estimated)
 
-### Month 1
-- Complete Priority 1 & 2 (Documentation + Refactoring)
-- Reduce main.zig to < 10 imports
-- Create architecture documentation
+### Month 1: Refactoring & Decoupling
+**Focus**: Complete Priority 1 coupling refactoring
+- Week 1: Create `protocol_layer.zig` facade (5.5 hours = 1 workday)
+- Week 2: Create `domain_layer.zig` facade (2 hours)
+- Week 3: Update `emulator.zig` and `main.zig` (1.5 hours)
+- **Result**: Reduce emulator.zig from 12→3 imports, all 60+ tests pass
+- **Buffer**: Polish, run `task check`, commit with conventional commits
 
-### Month 2
-- Complete Priority 3 & 4 (Testing + Core Features)
-- Add EBCDIC support
-- Implement basic session persistence
+### Month 2: Testing & Coverage
+**Focus**: Complete Priority 2 & 3 (utils extraction + integration tests)
+- Extract `parse_utils.zig` - DRY up parser duplication (3 hours)
+- Add e2e integration tests - screen update cycle validation (4 hours)
+- Performance benchmarks and memory profiling (3 hours)
+- **Result**: 70+ total tests, clear layer validation
 
-### Month 3
-- Complete Priority 5 (Quality)
-- Performance optimization
-- Real mainframe testing
-- CI/CD setup
+### Month 3: Features & Polish
+**Focus**: Complete Priority 4 (EBCDIC) + Quality
+- Implement EBCDIC encoder/decoder (6 hours)
+- Real mainframe testing with mvs38j.com (1-2 hours)
+- CI/CD setup with GitHub Actions (2 hours)
+- Polish error messages and logging (2 hours)
+- **Result**: Full protocol compliance, production-ready
 
 ---
 

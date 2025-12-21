@@ -54,17 +54,9 @@ pub fn main() !void {
 
 test {
     _ = @import("emulator.zig");
-    _ = @import("screen.zig");
-    _ = @import("protocol.zig");
-    _ = @import("parser.zig");
+    _ = @import("protocol_layer.zig");
+    _ = @import("domain_layer.zig");
     _ = @import("input.zig");
-    _ = @import("renderer.zig");
-    _ = @import("command.zig");
-    _ = @import("stream_parser.zig");
-    _ = @import("terminal.zig");
-    _ = @import("field.zig");
-    _ = @import("executor.zig");
-    _ = @import("data_entry.zig");
     _ = @import("attributes.zig");
     _ = @import("hex_viewer.zig");
     _ = ghostty_vt_example;
