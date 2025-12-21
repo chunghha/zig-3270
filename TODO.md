@@ -2,27 +2,31 @@
 
 ## Summary
 
-**Status**: Priorities 1-4 COMPLETE ✓  
-**Test Coverage**: 86+ tests (76 unit + 12 integration), all passing  
-**Codebase Size**: ~3,450 lines of Zig (2 facades + 1 EBCDIC + test expansion)  
-**Architecture**: 5-layer design with facades + EBCDIC support + comprehensive e2e validation ✓  
-**Next Action**: Priority 5 - Quality Assurance (error handling, logging, profiling)
+**Status**: Priorities 1-5 (partial) IN PROGRESS ✓  
+**Test Coverage**: 110+ tests (98+ unit + 12 integration), all passing  
+**Codebase Size**: ~3,820 lines of Zig (2 facades + 1 EBCDIC + 2 QA + test expansion)  
+**Architecture**: 5-layer design with facades + EBCDIC + error context + debug logging ✓  
+**Next Action**: Priority 5.3 - Performance profiling & optimization
 
 ### Quick Stats
-- **Modules**: 26 source files (23 + 2 facades + 1 EBCDIC)
+- **Modules**: 32 source files (23 + 2 facades + 1 EBCDIC + 2 QA)
 - **Imports in emulator.zig**: 4 (std + protocol_layer + domain_layer + input + attributes)
 - **Layer Facades**: protocol_layer (5 modules) + domain_layer (5 modules)
 - **EBCDIC Support**: encode/decode functions + round-trip conversion
-- **Tests**: 86+ total (76 unit + 12 integration e2e)
+- **Error Context**: ParseError, FieldError, ConnectionError with recovery suggestions
+- **Debug Logging**: Configurable per-module logging with 5 severity levels
+- **Tests**: 110+ total (98+ unit + 12 integration e2e)
 - **Integration Tests**: 12 comprehensive e2e tests validating layer interaction
-- **Build System**: Zig build.zig + Taskfile.yml
+- **Build System**: Zig build.zig + Taskfile.yml (with `task loc` for code metrics)
 - **Documentation**: README.md, ARCHITECTURE.md, HEX_VIEWER.md, GHOSTTY_INTEGRATION.md
 
 ### Progress Summary
 - **Phase 1**: ✓ Decouple emulator.zig (12→4 imports)
 - **Phase 2**: ✓ Consolidate parsing utilities
-- **Phase 3**: ✓ Add e2e integration tests (70+ total)
+- **Phase 3**: ✓ Add e2e integration tests (12 total)
 - **Phase 4**: ✓ EBCDIC encoder/decoder (16 tests, complete)
+- **Phase 5a**: ✓ Error handling & context (9 tests)
+- **Phase 5b**: ✓ Debug logging system (11 tests)
 
 ---
 
@@ -187,14 +191,21 @@
 
 ## Priority 5: Quality Assurance
 
-### Error Handling
-- [ ] **Enhance error messages**
+### Error Handling - COMPLETE ✓
+- [x] **Enhance error messages**
   - Add context and recovery suggestions
-  - *Effort*: 2 hours
+  - *Status*: Completed Dec 21 (actual: ~1.5 hours)
+  - Implementation: `error_context.zig` with ParseError, FieldError, ConnectionError
+  - Each error includes position/field info and recovery suggestions
+  - Commit: `99001fc`
 
-- [ ] **Add debug logging**
+- [x] **Add debug logging**
   - Log protocol interactions for troubleshooting
-  - *Effort*: 3 hours
+  - *Status*: Completed Dec 21 (actual: ~1.5 hours)
+  - Implementation: `debug_log.zig` with configurable per-module logging
+  - 5 severity levels: disabled, error, warn, info, debug, trace
+  - Can set global or per-module log levels
+  - Commit: `a89587b`
 
 ### Performance
 - [ ] **Profile for bottlenecks**
@@ -214,6 +225,13 @@
 ---
 
 ## Completed ✓
+
+- [x] **Priority 5: Error Handling & Logging** (COMPLETED - Dec 21)
+  - Created error_context.zig with structured error types and recovery suggestions
+  - Created debug_log.zig with configurable per-module logging system
+  - 20 tests covering all error types and logging scenarios
+  - Effort: ~3 hours actual
+  - Commits: 99001fc, a89587b
 
 - [x] **Priority 4: Implement EBCDIC encoder/decoder** (COMPLETED - Dec 21)
   - Created ebcdic.zig with standard EBCDIC-to-ASCII and ASCII-to-EBCDIC tables
@@ -261,9 +279,9 @@
 
 ### Code Statistics
 ```
-Total Lines: 3,450
-Modules: 26
-Tests: 86+
+Total Lines: 3,820
+Modules: 32
+Tests: 110+
 Test Pass Rate: 100%
 ```
 
@@ -272,12 +290,15 @@ Test Pass Rate: 100%
 - Terminal & Display: 6 modules (892 lines)
 - Network: 3 modules (562 lines)
 - Commands & Data: 4 modules (521 lines)
-- Character Encoding: 1 module (361 lines - EBCDIC)
-- Utilities & Examples: 6 modules (460 lines)
+- Character Encoding: 1 module (359 lines - EBCDIC)
+- Quality Assurance: 2 modules (609 lines - error_context + debug_log)
+- Utilities & Examples: 8 modules (600+ lines)
 
 ### Test Coverage by Module
 | Module | Tests | Status |
 |--------|-------|--------|
+| debug_log | 11 | ✓ |
+| error_context | 9 | ✓ |
 | ebcdic | 16 | ✓ |
 | hex_viewer | 7 | ✓ |
 | terminal | 8 | ✓ |
@@ -287,7 +308,7 @@ Test Pass Rate: 100%
 | command | 5 | ✓ |
 | input | 4 | ✓ |
 | screen | 5 | ✓ |
-| **TOTAL** | **86+** | **✓** |
+| **TOTAL** | **110+** | **✓** |
 
 ---
 
