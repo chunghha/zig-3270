@@ -170,10 +170,54 @@ Test connection to any TN3270 mainframe with screen capture:
 task test-connection-custom -- 192.168.1.100 3270
 ```
 
+### Test with Mock Server
+
+For local testing without a real mainframe, use the built-in mock server:
+
+**Terminal 1 - Start the mock server:**
+```bash
+task mock-server
+# Or directly:
+./zig-out/bin/mock-server
+```
+
+**Terminal 2 - Run the client test:**
+```bash
+task test-mock
+# Or directly:
+./zig-out/bin/client-test 127.0.0.1 3270
+```
+
+Expected output shows screen data captured from the mock server and rendered in the terminal.
+
 ### Example Public Mainframes (IPs required)
 
-- **mvs38j.com** (IBM MVS 3.8j emulator): `104.196.211.220:3270`
+- **mvs38j.com** (IBM MVS 3.8j emulator): `104.196.211.220:3270` - _Port currently unavailable_
 - Most require an IP address due to DNS limitations in current build
+
+### Testing Architecture
+
+```
+┌─────────────────┐
+│   client-test   │
+│  (TN3270 client)│
+└────────┬────────┘
+         │ TCP/IP 3270
+         │
+    ┌────▼─────────────┐
+    │  3270 Server     │
+    │ (real or mock)   │
+    └──────────────────┘
+```
+
+The client:
+1. **Connects** to host:port
+2. **Negotiates** TN3270 telnet options
+3. **Reads** server response (3270 screen data)
+4. **Parses** 3270 data stream (buffer addresses, text, attributes)
+5. **Captures** screen content into buffer
+6. **Displays** formatted 24×80 screen output
+7. **Closes** connection gracefully
 
 ## Why libghostty-vt?
 
