@@ -231,8 +231,15 @@
 - [ ] **Test with real mainframe** (mvs38j.com)
   - *Effort*: 1 hour
 
-- [ ] **Add CI/CD pipeline** (GitHub Actions)
-  - *Effort*: 2 hours
+- [x] **Add CI/CD pipeline** (GitHub Actions)
+  - *Status*: Completed Dec 21
+  - Implementation: `.github/workflows/ci.yml`
+  - Features:
+    - Test on every push to main
+    - Build on Ubuntu and macOS
+    - Auto-create GitHub releases on version tags (v0.2.0, etc.)
+    - Release assets include binaries and documentation
+  - Commit: `<pending>`
 
 ---
 

@@ -123,6 +123,7 @@ Common tasks:
 - `task fmt` — formats code using `zig fmt`
 - `task check` — runs format check and tests without modifying files
 - `task clean` — cleans the build directory
+- `task loc` — count lines of code using tokei
 
 Recommended local TDD-aligned workflow:
 1. Write a single small failing test (using `@import("std").testing`) describing the desired behavior.
@@ -131,3 +132,89 @@ Recommended local TDD-aligned workflow:
 4. Run formatting: `task fmt` to format code.
 5. Build the project: `task build`.
 6. Commit only when tests pass and there are no build errors.
+
+# SEMANTIC VERSIONING
+
+Use [Semantic Versioning](https://semver.org/) for releases. Format: `v{MAJOR}.{MINOR}.{PATCH}`
+
+## Version Numbering Rules
+
+- **MAJOR** (v1.0.0): Breaking changes to API or protocol
+- **MINOR** (v0.2.0): New features, backward compatible
+- **PATCH** (v0.2.1): Bug fixes only
+
+## Release Process
+
+### 1. Pre-Release Verification
+
+Before creating a version tag, verify quality:
+
+```bash
+task check      # Format check + all tests must pass
+task build      # Release build must succeed
+task loc        # Check code metrics
+```
+
+### 2. Update Documentation
+
+- [ ] Update `TODO.md` with completed work for this version
+- [ ] Update relevant files in `docs/`
+- [ ] Ensure `QUICKSTART.md` reflects current state
+- [ ] Check that all tests pass: `task check`
+
+### 3. Create Version Tag
+
+Use annotated tags with descriptive messages:
+
+```bash
+# Create tag (MAJOR.MINOR.PATCH format)
+git tag -a v0.2.0 -m "Release v0.2.0 - Quality Assurance & Performance"
+
+# Push tag to trigger CI/release workflow
+git push origin v0.2.0
+```
+
+### 4. GitHub Actions Handles Release
+
+When tag is pushed (v*) format:
+1. CI tests run on Ubuntu and macOS
+2. Release binaries are built
+3. GitHub Release is created with:
+   - Compiled executables for both platforms
+   - Documentation files
+   - Auto-generated release notes from commits
+
+See `docs/CI_CD.md` for complete CI/CD documentation.
+
+## Version Tag Examples
+
+```bash
+# Initial release (v0.1.0)
+git tag -a v0.1.0 -m "Release v0.1.0 - Foundation"
+git push origin v0.1.0
+
+# Feature release (v0.2.0)
+git tag -a v0.2.0 -m "Release v0.2.0 - Quality Assurance & Performance"
+git push origin v0.2.0
+
+# Bug fix release (v0.2.1)
+git tag -a v0.2.1 -m "Release v0.2.1 - Bug fixes"
+git push origin v0.2.1
+
+# Major production release (v1.0.0)
+git tag -a v1.0.0 -m "Release v1.0.0 - Production Ready"
+git push origin v1.0.0
+```
+
+## Release Checklist
+
+Before pushing a version tag:
+
+- [ ] All tests passing (`task check`)
+- [ ] Build succeeds (`task build`)
+- [ ] Documentation updated (TODO.md, docs/)
+- [ ] Code formatted (`task fmt --check src/`)
+- [ ] Version tag created with message
+- [ ] Tag pushed to remote (`git push origin vX.Y.Z`)
+- [ ] GitHub Actions completes (check Actions tab)
+- [ ] Release assets are available on GitHub

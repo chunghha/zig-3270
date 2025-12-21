@@ -279,6 +279,46 @@ git commit -m "style: description"
 4. **docs/PERFORMANCE.md** - Performance analysis and optimization guide
 5. **AGENTS.md** - Development methodology and standards
 
+## Creating a Release
+
+### Version Tags
+
+The project uses semantic versioning with git tags:
+
+```bash
+# Create an annotated tag
+git tag -a v0.2.0 -m "Release v0.2.0 - Quality Assurance & Performance"
+
+# Push tag to trigger CI/release workflow
+git push origin v0.2.0
+```
+
+GitHub Actions will automatically:
+1. Run tests on Ubuntu and macOS
+2. Build release binaries
+3. Create GitHub Release with assets and documentation
+4. Attach binaries for both platforms
+
+### Pre-Release Checklist
+
+```bash
+# 1. Verify everything works
+task check      # Tests must pass
+task build      # Build must succeed
+task loc        # Check metrics
+
+# 2. Update documentation
+# - Update TODO.md with completed work
+# - Update relevant docs/
+
+# 3. Create and push release tag
+git tag -a v0.2.0 -m "Release message"
+git push origin v0.2.0
+# (GitHub Actions handles the rest)
+```
+
+See `docs/CI_CD.md` for detailed CI/CD documentation.
+
 ## Common Tasks
 
 ### Add a new test
