@@ -1,20 +1,9 @@
 const std = @import("std");
-const screen = @import("screen.zig");
-const parser = @import("parser.zig");
-const input = @import("input.zig");
-const renderer = @import("renderer.zig");
-const protocol = @import("protocol.zig");
-const command = @import("command.zig");
-const stream_parser = @import("stream_parser.zig");
-const terminal = @import("terminal.zig");
-const field = @import("field.zig");
-const executor = @import("executor.zig");
-const data_entry = @import("data_entry.zig");
-const attributes = @import("attributes.zig");
-const ghostty_vt_example = @import("ghostty_vt_example.zig");
-const ghostty_vt_terminal = @import("ghostty_vt_terminal.zig");
+const emulator = @import("emulator.zig");
 const client_mod = @import("client.zig");
 const hex_viewer = @import("hex_viewer.zig");
+const ghostty_vt_terminal = @import("ghostty_vt_terminal.zig");
+const ghostty_vt_example = @import("ghostty_vt_example.zig");
 
 // Optional: libghostty-vt integration (only available if dependency is available)
 const has_ghostty_vt = @import("builtin").zig_backend != .other;
@@ -24,21 +13,14 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    // Initialize modules
-    var scr = try screen.Screen.init(allocator, 24, 80);
-    defer scr.deinit();
-
-    var input_handler = input.InputHandler.init(allocator);
-    defer input_handler.deinit();
-
-    var term = terminal.Terminal.init(allocator, &scr);
-
-    var field_mgr = field.FieldManager.init(allocator);
-    defer field_mgr.deinit();
+    // Initialize emulator (facade that wraps screen, terminal, field, input)
+    var emu = try emulator.Emulator.init(allocator, 24, 80);
+    defer emu.deinit();
 
     std.debug.print("=== 3270 Emulator ===\n", .{});
-    std.debug.print("Screen: {}x{}\n", .{ scr.rows, scr.cols });
-    std.debug.print("Modules: Screen, Parser, Input, Terminal, Field Manager, Client\n", .{});
+    const size = emu.screen_size();
+    std.debug.print("Screen: {}x{}\n", .{ size.rows, size.cols });
+    std.debug.print("Modules: Emulator (facade), Client, Hex Viewer\n", .{});
     if (has_ghostty_vt) {
         std.debug.print("libghostty-vt: Available\n", .{});
     } else {
@@ -46,10 +28,10 @@ pub fn main() !void {
     }
 
     // Demo: create a field and write text
-    _ = try field_mgr.add_field(0, 20, .{});
-    try term.write_string("IBM 3270 Terminal");
+    try emu.add_field(0, 20, .{});
+    try emu.write_string("IBM 3270 Terminal");
 
-    try term.render();
+    try emu.render();
 
     // Demonstrate client module (after screen render)
     std.debug.print("\n=== Client Connection Example ===\n", .{});
@@ -60,7 +42,7 @@ pub fn main() !void {
     // Optional: Demonstrate libghostty-vt integration
     if (has_ghostty_vt) {
         std.debug.print("\n=== libghostty-vt Integration Demo ===\n", .{});
-        var vt_term = try ghostty_vt_terminal.GhosttyVtTerminal.init(allocator, &scr);
+        var vt_term = try ghostty_vt_terminal.GhosttyVtTerminal.init(allocator, &emu.screen_buffer);
         defer vt_term.deinit();
 
         try vt_term.write_string("VT Terminal Output");
@@ -71,6 +53,7 @@ pub fn main() !void {
 }
 
 test {
+    _ = @import("emulator.zig");
     _ = @import("screen.zig");
     _ = @import("protocol.zig");
     _ = @import("parser.zig");
