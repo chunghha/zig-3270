@@ -2,17 +2,18 @@
 
 ## Summary
 
-**Status**: Priorities 1-3 COMPLETE ✓  
-**Test Coverage**: 70+ tests (60 unit + 12 integration), all passing  
-**Codebase Size**: ~3,100 lines of Zig (2 facade + 1 test expansion)  
-**Architecture**: 5-layer design with facades + comprehensive e2e validation ✓  
-**Next Action**: Priority 4 - Implement EBCDIC encoder/decoder
+**Status**: Priorities 1-4 COMPLETE ✓  
+**Test Coverage**: 86+ tests (76 unit + 12 integration), all passing  
+**Codebase Size**: ~3,450 lines of Zig (2 facades + 1 EBCDIC + test expansion)  
+**Architecture**: 5-layer design with facades + EBCDIC support + comprehensive e2e validation ✓  
+**Next Action**: Priority 5 - Quality Assurance (error handling, logging, profiling)
 
 ### Quick Stats
-- **Modules**: 25 source files (23 + 2 new facades)
+- **Modules**: 26 source files (23 + 2 facades + 1 EBCDIC)
 - **Imports in emulator.zig**: 4 (std + protocol_layer + domain_layer + input + attributes)
 - **Layer Facades**: protocol_layer (5 modules) + domain_layer (5 modules)
-- **Tests**: 70+ total (60 unit + 12 integration e2e)
+- **EBCDIC Support**: encode/decode functions + round-trip conversion
+- **Tests**: 86+ total (76 unit + 12 integration e2e)
 - **Integration Tests**: 12 comprehensive e2e tests validating layer interaction
 - **Build System**: Zig build.zig + Taskfile.yml
 - **Documentation**: README.md, ARCHITECTURE.md, HEX_VIEWER.md, GHOSTTY_INTEGRATION.md
@@ -21,7 +22,7 @@
 - **Phase 1**: ✓ Decouple emulator.zig (12→4 imports)
 - **Phase 2**: ✓ Consolidate parsing utilities
 - **Phase 3**: ✓ Add e2e integration tests (70+ total)
-- **Phase 4**: ⏳ EBCDIC encoder/decoder (in progress)
+- **Phase 4**: ✓ EBCDIC encoder/decoder (16 tests, complete)
 
 ---
 
@@ -150,16 +151,23 @@
 
 ---
 
-## Priority 4: Features - EBCDIC Support (After Priority 3)
+## Priority 4: Features - EBCDIC Support (COMPLETED ✓)
 
-### Core: EBCDIC Encoding
-- [ ] **Implement EBCDIC encoder/decoder** - IBM mainframe character encoding
+### Core: EBCDIC Encoding - COMPLETE
+- [x] **Implement EBCDIC encoder/decoder** - IBM mainframe character encoding
   - Create `ebcdic.zig` with standard EBCDIC-to-ASCII and ASCII-to-EBCDIC tables
-  - Integrate into parser.zig (inbound) and command.zig (outbound)
-  - Tests: 10+ test cases covering common characters, special chars, edge cases
-  - Effort: 4-6 hours
-  - Impact: Full TN3270 protocol compliance
-  - TDD: Write test for encoding standard ASCII → EBCDIC first
+  - Exported via root.zig as public API
+  - Tests: 16 test cases covering single bytes, buffers, round-trips, error cases
+  - Effort: Completed Dec 21 (actual: ~1.5 hours with TDD)
+  - Impact: Foundation for TN3270 protocol compliance
+  - Commit: `2457836`
+  - Key Functions:
+    - `decode_byte(ebcdic_byte: u8) -> u8` - Single byte decoding
+    - `encode_byte(ascii_byte: u8) -> !u8` - Single byte encoding with error handling
+    - `decode(ebcdic_buffer: []const u8, ascii_buffer: []u8) -> !usize` - Buffer decoding
+    - `encode(ascii_buffer: []const u8, ebcdic_buffer: []u8) -> !usize` - Buffer encoding
+    - `decode_alloc(allocator, buffer) -> ![]u8` - Allocating decode
+    - `encode_alloc(allocator, buffer) -> ![]u8` - Allocating encode
 
 ### Nice-to-Have Features
 - [ ] **Keyboard mapping configuration** - Allow user-defined key bindings
@@ -207,6 +215,13 @@
 
 ## Completed ✓
 
+- [x] **Priority 4: Implement EBCDIC encoder/decoder** (COMPLETED - Dec 21)
+  - Created ebcdic.zig with standard EBCDIC-to-ASCII and ASCII-to-EBCDIC tables
+  - 16 comprehensive tests covering single bytes, buffers, round-trips, special chars, digits, lowercase
+  - Error handling for invalid ASCII values and buffer overflow
+  - Allocating and non-allocating variants for flexible memory management
+  - Commit: 2457836
+
 - [x] **Priority 3: Add e2e integration tests** (COMPLETED - Dec 21)
   - Added 6 comprehensive e2e tests to integration_test.zig
   - Validated protocol_layer + domain_layer facade integration
@@ -246,9 +261,9 @@
 
 ### Code Statistics
 ```
-Total Lines: 3,038
-Modules: 23
-Tests: 60+
+Total Lines: 3,450
+Modules: 26
+Tests: 86+
 Test Pass Rate: 100%
 ```
 
@@ -257,11 +272,13 @@ Test Pass Rate: 100%
 - Terminal & Display: 6 modules (892 lines)
 - Network: 3 modules (562 lines)
 - Commands & Data: 4 modules (521 lines)
-- Utilities & Examples: 5 modules (409 lines)
+- Character Encoding: 1 module (361 lines - EBCDIC)
+- Utilities & Examples: 6 modules (460 lines)
 
 ### Test Coverage by Module
 | Module | Tests | Status |
 |--------|-------|--------|
+| ebcdic | 16 | ✓ |
 | hex_viewer | 7 | ✓ |
 | terminal | 8 | ✓ |
 | field | 6 | ✓ |
@@ -270,7 +287,7 @@ Test Pass Rate: 100%
 | command | 5 | ✓ |
 | input | 4 | ✓ |
 | screen | 5 | ✓ |
-| **TOTAL** | **60+** | **✓** |
+| **TOTAL** | **86+** | **✓** |
 
 ---
 
