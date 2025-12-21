@@ -69,12 +69,35 @@ fn captureScreen(allocator: std.mem.Allocator, data: []u8) !screen.Screen {
 
 /// Display captured screen
 fn displayScreen(scr: *screen.Screen) void {
-    std.debug.print("\n╔══════════════════════════════════════════════════════════════════════════════╗\n", .{});
-    std.debug.print("║ 3270 CAPTURED SCREEN ({d}x{d})                                           ║\n", .{ scr.rows, scr.cols });
-    std.debug.print("╠══════════════════════════════════════════════════════════════════════════════╣\n", .{});
+    const border_width = 82; // 80 chars + 2 borders
 
+    std.debug.print("\n", .{});
+    // Top border
+    for (0..border_width) |_| {
+        std.debug.print("═", .{});
+    }
+    std.debug.print("\n", .{});
+
+    // Header line
+    const header_text = "3270 CAPTURED SCREEN (24x80)";
+    const content_width = 80;
+    const left_pad = (content_width - header_text.len) / 2;
+    const right_pad = content_width - header_text.len - left_pad;
+
+    std.debug.print("║", .{});
+    for (0..left_pad) |_| std.debug.print(" ", .{});
+    std.debug.print("{s}", .{header_text});
+    for (0..right_pad) |_| std.debug.print(" ", .{});
+    std.debug.print("║\n", .{});
+
+    // Separator
+    std.debug.print("╠", .{});
+    for (0..content_width) |_| std.debug.print("═", .{});
+    std.debug.print("╣\n", .{});
+
+    // Screen content
     for (0..scr.rows) |row| {
-        std.debug.print("║ ", .{});
+        std.debug.print("║", .{});
         for (0..scr.cols) |col| {
             const ch = scr.read_char(@intCast(row), @intCast(col)) catch ' ';
             // Print character or placeholder
@@ -84,10 +107,13 @@ fn displayScreen(scr: *screen.Screen) void {
                 std.debug.print("·", .{});
             }
         }
-        std.debug.print(" ║\n", .{});
+        std.debug.print("║\n", .{});
     }
 
-    std.debug.print("╚══════════════════════════════════════════════════════════════════════════════╝\n", .{});
+    // Bottom border
+    std.debug.print("╚", .{});
+    for (0..content_width) |_| std.debug.print("═", .{});
+    std.debug.print("╝\n", .{});
 }
 
 /// Test TN3270 connection to a public mainframe
