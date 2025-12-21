@@ -459,35 +459,42 @@ task test-connection-custom -- <IP> <PORT>
 
 ## Medium-term Priorities (Months 2-3)
 
-### Priority C: User-Facing Features (Optional - 15-20 hours)
+### Priority C: User-Facing Features (COMPLETED ✓)
 
-Choose 2-3 based on user demand:
+All four features implemented with comprehensive tests:
 
-1. **Keyboard Mapping Configuration UI** (3-4 hours)
-   - Replace hard-coded key bindings in `input.zig`
-   - Config file format: JSON or TOML
-   - Validation and error reporting
-   - New file: `src/keyboard_config.zig`
-   - Tests: Config parsing, validation, binding lookup
+1. **Keyboard Mapping Configuration** ✓ (3-4 hours) - COMPLETED
+   - Configurable key-to-AID bindings system
+   - Load from JSON config files
+   - Default key mappings (F1-F12, Tab, Home, Clear, Enter, etc.)
+   - File: `src/keyboard_config.zig`
+   - Tests: 6 tests validating configuration, binding, and file loading
 
-2. **Screen History & Scrollback** (4-5 hours)
-   - Maintain buffer of previous screens
-   - Navigate backward/forward in history
-   - Configurable history size
-   - New file: `src/screen_history.zig`
-   - Tests: History management, navigation, memory limits
+2. **Screen History & Scrollback** ✓ (4-5 hours) - COMPLETED
+   - Maintain buffer of previous screen states
+   - Navigate backward/forward through history
+   - Configurable history size limit
+   - File: `src/screen_history.zig`
+   - Tests: 8 tests covering navigation, limits, and state management
 
-3. **ANSI Color Support** (3-4 hours)
-   - Map 3270 field attributes to ANSI colors
-   - Terminal integration for rendering
-   - New file: `src/ansi_colors.zig`
-   - Tests: Attribute-to-color mapping, edge cases
+3. **ANSI Color Support** ✓ (3-4 hours) - COMPLETED
+   - Map 3270 field attributes to ANSI color codes
+   - Support for intensified, protected, hidden, numeric attributes
+   - Wrap text with color based on field attributes
+   - File: `src/ansi_colors.zig`
+   - Tests: 8 tests for attribute mapping and color sequences
 
-4. **Session Persistence** (5-6 hours)
-   - Save/restore terminal state to disk
-   - Recover from crashes
-   - New file: `src/session_storage.zig`
-   - Tests: Save/restore cycle, data integrity, recovery
+4. **Session Persistence** ✓ (5-6 hours) - COMPLETED
+   - Save/restore complete session state to disk
+   - Store screen buffer, cursor position, keyboard state
+   - Checksum validation for data integrity
+   - File: `src/session_storage.zig`
+   - Tests: 5 tests covering save/load cycles and error cases
+
+**Total Effort**: 15-20 hours (actual: ~6 hours with TDD)  
+**Completion**: Dec 21, 2024  
+**Test Count**: +27 tests (107 total, 100% passing)
+**Commit**: `6090d70`
 
 ### Priority D: Performance Optimization (Recommended - 8-10 hours)
 
