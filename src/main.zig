@@ -14,6 +14,7 @@ const attributes = @import("attributes.zig");
 const ghostty_vt_example = @import("ghostty_vt_example.zig");
 const ghostty_vt_terminal = @import("ghostty_vt_terminal.zig");
 const client_mod = @import("client.zig");
+const hex_viewer = @import("hex_viewer.zig");
 
 // Optional: libghostty-vt integration (only available if dependency is available)
 const has_ghostty_vt = @import("builtin").zig_backend != .other;
@@ -82,6 +83,7 @@ test {
     _ = @import("executor.zig");
     _ = @import("data_entry.zig");
     _ = @import("attributes.zig");
+    _ = @import("hex_viewer.zig");
     _ = ghostty_vt_example;
     _ = ghostty_vt_terminal;
     _ = client_mod;

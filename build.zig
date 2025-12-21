@@ -73,10 +73,23 @@ pub fn build(b: *std.Build) void {
         .root_module = mock_server_module,
     });
 
+    // Hex viewer example program
+    const hex_viewer_example_module = b.addModule("hex_viewer_example", .{
+        .root_source_file = b.path("src/hex_viewer_example.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const hex_viewer_example_exe = b.addExecutable(.{
+        .name = "hex-viewer",
+        .root_module = hex_viewer_example_module,
+    });
+
     b.installArtifact(exe);
     b.installArtifact(ghostty_vt_visual_test);
     b.installArtifact(client_test_exe);
     b.installArtifact(mock_server_exe);
+    b.installArtifact(hex_viewer_example_exe);
 
     // Run step
     const run_cmd = b.addRunArtifact(exe);
@@ -99,6 +112,11 @@ pub fn build(b: *std.Build) void {
     }
     const client_test_step = b.step("test-connection", "Test TN3270 connection to mainframe");
     client_test_step.dependOn(&run_client_test.step);
+
+    // Hex viewer run step
+    const run_hex_viewer = b.addRunArtifact(hex_viewer_example_exe);
+    const hex_viewer_step = b.step("hex-viewer", "Run hex viewer example");
+    hex_viewer_step.dependOn(&run_hex_viewer.step);
 
     // Test step
     const test_module = b.addModule("test", .{

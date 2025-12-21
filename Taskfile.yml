@@ -69,3 +69,8 @@ tasks:
         desc: Test connection to local mock 3270 server (requires mock-server running in another terminal)
         cmds:
             - ./zig-out/bin/client-test 127.0.0.1 3270
+
+    hex-viewer:
+        desc: Run hex viewer example
+        cmds:
+            - zig build hex-viewer
