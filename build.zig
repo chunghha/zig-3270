@@ -15,6 +15,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    // Temporary: exclude problematic benchmark_comprehensive.zig from build
+    // TODO: Fix Zig API compatibility issues in comprehensive benchmark
+
     // Try to add libghostty-vt as a dependency
     if (b.lazyDependency("libghostty_vt", .{
         .target = target,
