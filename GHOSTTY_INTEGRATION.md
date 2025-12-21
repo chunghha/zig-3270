@@ -115,9 +115,19 @@ nslookup mvs38j.com
 dig mvs38j.com
 ```
 
+### Screen Capture
+
+The connection tester automatically captures the initial 3270 screen response from the mainframe and displays it:
+
+- **Raw data hex dump**: Shows the first 128 bytes of the response in hexadecimal
+- **Screen display**: Renders the captured 3270 screen with a text box border
+  - Printable characters (0x20-0x7E) are displayed as-is
+  - Non-printable characters are shown as dots (·)
+  - Default screen: 24 rows × 80 columns
+
 ### Test with Default Public Mainframe
 
-Test connection to mvs38j.com (104.196.211.220), a public IBM mainframe emulator:
+Test connection to mvs38j.com (104.196.211.220), a public IBM mainframe emulator, and capture screen:
 
 ```bash
 task test-connection
@@ -126,9 +136,34 @@ task test-connection
 timeout 10 task test-connection
 ```
 
+**Output example:**
+```
+=== TN3270 Connection Test ===
+Target: 104.196.211.220:3270
+Connecting...
+Attempting connection (this may take a moment)...
+✓ Connected successfully!
+✓ Received 256 bytes from server
+
+Raw response (first 128 bytes hex): 00 01 02 03 ...
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ 3270 CAPTURED SCREEN (24x80)                                           ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ WELCOME TO IBM MAINFRAME                                               ║
+║                                                                        ║
+║ Press ENTER to continue                                               ║
+│ ...                                                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✓ Disconnected
+
+Connection test completed successfully.
+```
+
 ### Test with Custom Host
 
-Test connection to any TN3270 mainframe:
+Test connection to any TN3270 mainframe with screen capture:
 
 ```bash
 # Usage: task test-connection-custom -- IP_ADDRESS PORT
