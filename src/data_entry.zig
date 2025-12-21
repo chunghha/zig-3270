@@ -1,6 +1,7 @@
 const std = @import("std");
 const field = @import("field.zig");
 const screen = @import("screen.zig");
+const parse_utils = @import("parse_utils.zig");
 
 /// Data entry manager - handles keyboard input to unprotected fields
 pub const DataEntry = struct {
@@ -83,8 +84,9 @@ pub const DataEntry = struct {
 
         // Also update screen
         const screen_offset = f.start_address + self.field_cursor;
-        const row = @as(u16, @intCast(screen_offset / 80));
-        const col = @as(u16, @intCast(screen_offset % 80));
+        const addr = parse_utils.buffer_to_address(screen_offset);
+        const row = @as(u16, @intCast(addr.row));
+        const col = @as(u16, @intCast(addr.col));
 
         if (row < self.screen.rows and col < self.screen.cols) {
             try self.screen.write_char(row, col, char);
@@ -112,8 +114,9 @@ pub const DataEntry = struct {
 
         // Also update screen
         const screen_offset = f.start_address + self.field_cursor;
-        const row = @as(u16, @intCast(screen_offset / 80));
-        const col = @as(u16, @intCast(screen_offset % 80));
+        const addr = parse_utils.buffer_to_address(screen_offset);
+        const row = @as(u16, @intCast(addr.row));
+        const col = @as(u16, @intCast(addr.col));
 
         if (row < self.screen.rows and col < self.screen.cols) {
             try self.screen.write_char(row, col, ' ');
@@ -146,8 +149,9 @@ pub const DataEntry = struct {
         // Update screen
         for (0..f.length) |offset| {
             const screen_offset = f.start_address + offset;
-            const row = @as(u16, @intCast(screen_offset / 80));
-            const col = @as(u16, @intCast(screen_offset % 80));
+            const addr = parse_utils.buffer_to_address(screen_offset);
+            const row = @as(u16, @intCast(addr.row));
+            const col = @as(u16, @intCast(addr.col));
 
             if (row < self.screen.rows and col < self.screen.cols) {
                 try self.screen.write_char(row, col, ' ');

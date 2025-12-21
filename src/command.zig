@@ -1,5 +1,6 @@
 const std = @import("std");
 const protocol = @import("protocol.zig");
+const parse_utils = @import("parse_utils.zig");
 
 /// Parsed 3270 command
 pub const Command = struct {
@@ -39,7 +40,7 @@ pub const CommandParser = struct {
         }
 
         const code_byte = buffer[0];
-        const code: protocol.CommandCode = std.meta.intToEnum(protocol.CommandCode, code_byte) catch {
+        const code = parse_utils.parse_command_code(code_byte) catch {
             return error.InvalidCommandCode;
         };
 
@@ -65,7 +66,7 @@ pub const CommandParser = struct {
         var pos: usize = 0;
         while (pos < buffer.len) {
             const code_byte = buffer[pos];
-            const code: protocol.OrderCode = std.meta.intToEnum(protocol.OrderCode, code_byte) catch {
+            const code = parse_utils.parse_order_code(code_byte) catch {
                 pos += 1;
                 continue;
             };
