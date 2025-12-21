@@ -41,6 +41,9 @@ pub const Client = struct {
     stream: ?std.net.Stream,
     connected: bool,
     read_buffer: []u8,
+    read_timeout_ms: u32 = 10000,
+    write_timeout_ms: u32 = 5000,
+    last_activity: i64 = 0,
 
     pub fn init(
         allocator: std.mem.Allocator,
@@ -54,7 +57,24 @@ pub const Client = struct {
             .stream = null,
             .connected = false,
             .read_buffer = &[_]u8{},
+            .last_activity = std.time.milliTimestamp(),
         };
+    }
+
+    /// Set read timeout in milliseconds
+    pub fn set_read_timeout(self: *Client, timeout_ms: u32) void {
+        self.read_timeout_ms = timeout_ms;
+    }
+
+    /// Set write timeout in milliseconds
+    pub fn set_write_timeout(self: *Client, timeout_ms: u32) void {
+        self.write_timeout_ms = timeout_ms;
+    }
+
+    /// Check if connection timed out
+    pub fn is_timed_out(self: Client) bool {
+        const now = std.time.milliTimestamp();
+        return (now - self.last_activity) > @as(i64, self.read_timeout_ms);
     }
 
     /// Connect to the host
@@ -122,7 +142,12 @@ pub const Client = struct {
             return error.NotConnected;
         }
 
+        if (self.is_timed_out()) {
+            return error.ReadTimeout;
+        }
+
         const bytes_read = try self.stream.?.read(self.read_buffer);
+        self.last_activity = std.time.milliTimestamp();
         return self.read_buffer[0..bytes_read];
     }
 
@@ -132,7 +157,12 @@ pub const Client = struct {
             return error.NotConnected;
         }
 
+        if (self.is_timed_out()) {
+            return error.WriteTimeout;
+        }
+
         try self.stream.?.writeAll(data);
+        self.last_activity = std.time.milliTimestamp();
     }
 
     /// Send a 3270 command
@@ -168,4 +198,50 @@ test "telnet command enum values" {
     try std.testing.expectEqual(@as(u8, 255), @intFromEnum(TelnetCommand.iac));
     try std.testing.expectEqual(@as(u8, 251), @intFromEnum(TelnetCommand.will));
     try std.testing.expectEqual(@as(u8, 253), @intFromEnum(TelnetCommand.do_cmd));
+}
+
+test "client: set_read_timeout updates timeout value" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var test_client = Client.init(allocator, "localhost", 3270);
+    test_client.set_read_timeout(5000);
+
+    try std.testing.expectEqual(@as(u32, 5000), test_client.read_timeout_ms);
+}
+
+test "client: set_write_timeout updates timeout value" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var test_client = Client.init(allocator, "localhost", 3270);
+    test_client.set_write_timeout(3000);
+
+    try std.testing.expectEqual(@as(u32, 3000), test_client.write_timeout_ms);
+}
+
+test "client: is_timed_out detects timeout" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var test_client = Client.init(allocator, "localhost", 3270);
+    test_client.set_read_timeout(100); // 100ms timeout
+    test_client.last_activity = std.time.milliTimestamp() - 200; // 200ms ago
+
+    try std.testing.expect(test_client.is_timed_out());
+}
+
+test "client: is_timed_out detects active connection" {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var test_client = Client.init(allocator, "localhost", 3270);
+    test_client.set_read_timeout(5000); // 5 second timeout
+    test_client.last_activity = std.time.milliTimestamp(); // Just now
+
+    try std.testing.expect(!test_client.is_timed_out());
 }
