@@ -3,6 +3,7 @@ const protocol = @import("protocol.zig");
 const command = @import("command.zig");
 const field = @import("field.zig");
 const screen = @import("screen.zig");
+const parse_utils = @import("parse_utils.zig");
 
 /// 3270 command executor - processes parsed commands and updates screen state
 pub const Executor = struct {
@@ -60,21 +61,19 @@ pub const Executor = struct {
             const byte = data[pos];
 
             // Try to parse as order code
-            if (std.meta.intToEnum(protocol.OrderCode, byte)) |order_code| {
+            if (parse_utils.parse_order_code(byte)) |order_code| {
                 pos += 1;
 
                 switch (order_code) {
                     .set_buffer_address => {
-                        if (pos + 2 > data.len) return error.IncompleteOrder;
-                        const addr_bytes = data[pos .. pos + 2];
+                        const addr_bytes = try parse_utils.read_bytes(data, pos, 2);
                         const addr = protocol.Address.from_bytes(addr_bytes[0..2].*);
-                        self.cursor_address = @as(u16, addr.row) * 80 + addr.col;
+                        self.cursor_address = parse_utils.address_to_buffer(addr);
                         pos += 2;
                     },
                     .start_field => {
-                        if (pos + 1 > data.len) return error.IncompleteOrder;
-                        const attr_byte = data[pos];
-                        const attr: protocol.FieldAttribute = @bitCast(attr_byte);
+                        const attr_byte = try parse_utils.read_bytes(data, pos, 1);
+                        const attr: protocol.FieldAttribute = parse_utils.parse_field_attribute(attr_byte[0]);
 
                         // Field starts at current position, will be sized when we encounter next field
                         const field_start = self.cursor_address;
@@ -83,7 +82,7 @@ pub const Executor = struct {
                         pos += 1;
                     },
                     .set_attribute => {
-                        if (pos + 1 > data.len) return error.IncompleteOrder;
+                        _ = try parse_utils.read_bytes(data, pos, 1);
                         // Set attribute for current field (extended implementation)
                         pos += 1;
                     },
@@ -98,8 +97,9 @@ pub const Executor = struct {
                 }
             } else |_| {
                 // Regular text - write to screen
-                const row = @as(u16, @intCast(self.cursor_address / 80));
-                const col = @as(u16, @intCast(self.cursor_address % 80));
+                const addr = parse_utils.buffer_to_address(self.cursor_address);
+                const row = @as(u16, addr.row);
+                const col = @as(u16, addr.col);
 
                 if (row < self.screen.rows and col < self.screen.cols) {
                     try self.screen.write_char(row, col, byte);
