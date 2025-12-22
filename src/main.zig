@@ -64,6 +64,10 @@ test {
     _ = @import("session_recorder.zig");
     _ = @import("interactive_terminal.zig");
     _ = @import("session_autosave.zig");
+    _ = @import("security_audit.zig");
+    _ = @import("resource_limits.zig");
+    _ = @import("metrics_export.zig");
+    _ = @import("disaster_recovery_test.zig");
     _ = ghostty_vt_example;
     _ = ghostty_vt_terminal;
     _ = client_mod;
