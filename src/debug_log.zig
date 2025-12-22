@@ -53,17 +53,64 @@ pub const DebugLog = struct {
         }
     };
 
+    /// Output format for logs
+    pub const Format = enum {
+        text,
+        json,
+
+        pub fn as_string(self: Format) []const u8 {
+            return switch (self) {
+                .text => "text",
+                .json => "json",
+            };
+        }
+    };
+
     /// Logger configuration
     pub const Config = struct {
         global_level: Level = .disabled,
         module_levels: std.EnumMap(Module, Level) = .{},
+        format: Format = .text,
         allocator: std.mem.Allocator,
 
         pub fn init(allocator: std.mem.Allocator) Config {
             return Config{
                 .allocator = allocator,
                 .module_levels = std.EnumMap(Module, Level){},
+                .format = .text,
             };
+        }
+
+        pub fn init_from_env(allocator: std.mem.Allocator) Config {
+            var config = Config.init(allocator);
+
+            // Read ZIG_3270_LOG_LEVEL environment variable
+            if (std.posix.getenv("ZIG_3270_LOG_LEVEL")) |level_str| {
+                if (std.mem.eql(u8, level_str, "disabled")) {
+                    config.global_level = .disabled;
+                } else if (std.mem.eql(u8, level_str, "error")) {
+                    config.global_level = .err;
+                } else if (std.mem.eql(u8, level_str, "warn")) {
+                    config.global_level = .warn;
+                } else if (std.mem.eql(u8, level_str, "info")) {
+                    config.global_level = .info;
+                } else if (std.mem.eql(u8, level_str, "debug")) {
+                    config.global_level = .dbg;
+                } else if (std.mem.eql(u8, level_str, "trace")) {
+                    config.global_level = .trace;
+                }
+            }
+
+            // Read ZIG_3270_LOG_FORMAT environment variable
+            if (std.posix.getenv("ZIG_3270_LOG_FORMAT")) |format_str| {
+                if (std.mem.eql(u8, format_str, "json")) {
+                    config.format = .json;
+                } else {
+                    config.format = .text;
+                }
+            }
+
+            return config;
         }
 
         pub fn set_global_level(self: *Config, level: Level) void {
@@ -72,6 +119,10 @@ pub const DebugLog = struct {
 
         pub fn set_module_level(self: *Config, module: Module, level: Level) void {
             self.module_levels.put(module, level);
+        }
+
+        pub fn set_format(self: *Config, format: Format) void {
+            self.format = format;
         }
 
         pub fn get_level(self: Config, module: Module) Level {
@@ -146,19 +197,39 @@ pub const DebugLog = struct {
 
         const stderr = std.io.getStdErr();
         var writer = stderr.writer();
-
-        // Format timestamp (simplified - just milliseconds since program start)
         const now = std.time.milliTimestamp();
 
-        // Write log entry: [TIME] LEVEL module: message
-        _ = writer.print("[{d:0>6}ms] {s:6s} {s:12s}: ", .{
-            now % 1000000, // Keep last 6 digits
-            level.as_string(),
-            module.as_string(),
-        }) catch return;
-
-        _ = writer.print(fmt, args) catch return;
-        _ = writer.print("\n", .{}) catch return;
+        if (logger_config) |config| {
+            switch (config.format) {
+                .json => {
+                    // JSON format: {"timestamp":"ms","level":"LEVEL","module":"module","message":"..."}
+                    _ = writer.print("{{\"timestamp\":{d},\"level\":\"{s}\",\"module\":\"{s}\",\"message\":\"", .{
+                        now, level.as_string(), module.as_string(),
+                    }) catch return;
+                    _ = writer.print(fmt, args) catch return;
+                    _ = writer.print("\"}}\n", .{}) catch return;
+                },
+                .text => {
+                    // Text format: [TIME] LEVEL module: message
+                    _ = writer.print("[{d:0>6}ms] {s:6s} {s:12s}: ", .{
+                        now % 1000000, // Keep last 6 digits
+                        level.as_string(),
+                        module.as_string(),
+                    }) catch return;
+                    _ = writer.print(fmt, args) catch return;
+                    _ = writer.print("\n", .{}) catch return;
+                },
+            }
+        } else {
+            // Fallback: basic text format when config not initialized
+            _ = writer.print("[{d:0>6}ms] {s:6s} {s:12s}: ", .{
+                now % 1000000,
+                level.as_string(),
+                module.as_string(),
+            }) catch return;
+            _ = writer.print(fmt, args) catch return;
+            _ = writer.print("\n", .{}) catch return;
+        }
     }
 };
 
@@ -243,4 +314,33 @@ test "debug log logging disabled by default" {
 
     try std.testing.expect(!DebugLog.is_enabled(.parser, .err));
     try std.testing.expect(!DebugLog.is_enabled(.parser, .info));
+}
+
+test "debug log format enum representation" {
+    try std.testing.expectEqualStrings("text", DebugLog.Format.text.as_string());
+    try std.testing.expectEqualStrings("json", DebugLog.Format.json.as_string());
+}
+
+test "debug log config set format" {
+    var config = DebugLog.Config.init(std.testing.allocator);
+    try std.testing.expectEqual(DebugLog.Format.text, config.format);
+    config.set_format(.json);
+    try std.testing.expectEqual(DebugLog.Format.json, config.format);
+}
+
+test "debug log JSON output format" {
+    DebugLog.logger_config = DebugLog.Config.init(std.testing.allocator);
+    defer if (DebugLog.logger_config) |*cfg| {
+        _ = cfg;
+    };
+
+    DebugLog.set_level(.info);
+    if (DebugLog.logger_config) |*config| {
+        config.set_format(.json);
+    }
+
+    // This test just verifies the configuration is set, actual output would be stderr
+    if (DebugLog.logger_config) |config| {
+        try std.testing.expectEqual(DebugLog.Format.json, config.format);
+    }
 }

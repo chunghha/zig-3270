@@ -23,6 +23,9 @@ pub const audit_log = @import("audit_log.zig");
 pub const compliance = @import("compliance.zig");
 pub const rest_api = @import("rest_api.zig");
 pub const event_webhooks = @import("event_webhooks.zig");
+pub const error_context = @import("error_context.zig");
+pub const debug_log = @import("debug_log.zig");
+pub const config_validator = @import("config_validator.zig");
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
