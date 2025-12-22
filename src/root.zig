@@ -16,6 +16,9 @@ pub const performance_regression = @import("performance_regression.zig");
 pub const session_pool = @import("session_pool.zig");
 pub const session_lifecycle = @import("session_lifecycle.zig");
 pub const session_migration = @import("session_migration.zig");
+pub const load_balancer = @import("load_balancer.zig");
+pub const failover = @import("failover.zig");
+pub const health_checker = @import("health_checker.zig");
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
