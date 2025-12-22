@@ -12,6 +12,7 @@ pub const connection_monitor = @import("connection_monitor.zig");
 pub const diag_tool = @import("diag_tool.zig");
 pub const mainframe_test = @import("mainframe_test.zig");
 pub const fuzzing = @import("fuzzing.zig");
+pub const performance_regression = @import("performance_regression.zig");
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
