@@ -13,6 +13,7 @@ pub const diag_tool = @import("diag_tool.zig");
 pub const mainframe_test = @import("mainframe_test.zig");
 pub const fuzzing = @import("fuzzing.zig");
 pub const performance_regression = @import("performance_regression.zig");
+pub const session_pool = @import("session_pool.zig");
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
