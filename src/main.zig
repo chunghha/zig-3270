@@ -62,6 +62,8 @@ test {
     _ = @import("cli.zig");
     _ = @import("profile_manager.zig");
     _ = @import("session_recorder.zig");
+    _ = @import("interactive_terminal.zig");
+    _ = @import("session_autosave.zig");
     _ = ghostty_vt_example;
     _ = ghostty_vt_terminal;
     _ = client_mod;
