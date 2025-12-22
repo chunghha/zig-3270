@@ -1,0 +1,17 @@
+.{
+    .name = .zig_3270,
+    .version = "0.5.1",
+    .fingerprint = 0x9a81cad6c5291466,
+    .dependencies = .{
+        .libghostty_vt = .{
+            .url = "https://github.com/ghostty-org/ghostty/archive/refs/heads/main.tar.gz",
+            .hash = "12204181768435dded5cb7a99c52cddcd939585f9614c7303c0c498b6b81b1c8d260",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
