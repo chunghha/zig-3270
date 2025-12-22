@@ -1315,25 +1315,54 @@ Performance optimizations implemented with significant impact:
 
 ---
 
-## ⚠️ IMMEDIATE ACTION REQUIRED
+## v0.8.0 Development Plan
 
-### Version Synchronization Issue
+**Status**: Planning complete, ready for implementation  
+**Target Release**: Early January 2025  
+**Duration**: 2-3 weeks of focused development  
+**Estimated Effort**: 77-92 hours  
 
-**Current Discrepancy**:
-- `build.zig.zon` lists version: **0.5.1**
-- Latest git tag: **v0.7.0**
-- Actual implementation state: All v0.6.0 and v0.7.0 features implemented and tested
+See **V0_8_0_PLAN.md** for comprehensive roadmap.
 
-**Required Actions** (in order):
-1. **Update build.zig.zon** to version 0.7.0
-2. Verify all tests pass: `task check`
-3. Commit: `chore(version): sync build.zig.zon to v0.7.0`
-4. Ensure git tag v0.7.0 points to correct commit (currently `948ef32`)
+### Release Focus
 
-**Why This Matters**:
-- Users downloading releases expect version to match build.zig.zon
-- CI/CD pipeline uses this version for artifact naming
-- Next release (v0.8.0) should start from current version 0.7.0
+**P0 - Advanced Protocol Support** (40-45 hours):
+1. Extended structured fields (WSF support) - 6-8h
+2. LU3 printing support - 5-7h
+3. Graphics protocol support (optional) - 4-6h
+4. Real mainframe integration testing - 6-8h
+5. Production deployment guide - 3-4h
+
+**P1 - Monitoring & Optimization** (20-25 hours):
+1. Connection health monitoring - 4-5h
+2. Diagnostic CLI tool - 3-4h
+3. Large dataset handling - 4-5h
+4. Parser error recovery - 3-4h
+5. Documentation expansion - 4-6h
+
+**P2 - Testing Infrastructure** (10-15 hours):
+1. Fuzzing framework - 3-4h
+2. Performance regression testing - 2-3h
+3. Integration & polish - 5-8h
+
+### Success Criteria
+- [ ] All tests passing (target: 250+ tests)
+- [ ] Zero compiler warnings
+- [ ] Extended structured fields fully functional
+- [ ] Real mainframe testing results documented
+- [ ] Deployment guide published
+- [ ] Performance < 5% regression
+- [ ] Version bumped to 0.8.0
+- [ ] GitHub Release created
+
+---
+
+## ✓ COMPLETED - Version Synchronization
+
+**Status**: All version updates complete (Dec 22, 2024)
+- `build.zig.zon` updated to v0.7.0 ✓
+- Git tag v0.7.0 confirmed correct ✓
+- All documentation updated ✓
 
 ---
 
