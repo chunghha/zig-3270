@@ -34,26 +34,15 @@ pub const ERROR_FIELD_NOT_FOUND = 7;
 // Opaque Types (Hide implementation from C)
 // ============================================================================
 
-pub opaque type TN3270Client {
-    inner: *client.Client,
-};
+pub const TN3270Client = opaque {};
 
-pub opaque type TN3270Screen {
-    inner: *screen.Screen,
-};
+pub const TN3270Screen = opaque {};
 
-pub opaque type TN3270FieldManager {
-    inner: *field.FieldManager,
-};
+pub const TN3270FieldManager = opaque {};
 
-pub opaque type TN3270Parser {
-    inner: *parser.Parser,
-};
+pub const TN3270Parser = opaque {};
 
-pub opaque type TN3270String {
-    data: [*]u8,
-    len: usize,
-};
+pub const TN3270String = opaque {};
 
 // ============================================================================
 // Protocol Types (C-compatible structs)

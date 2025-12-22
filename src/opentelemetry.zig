@@ -537,7 +537,7 @@ test "trace context W3C format" {
 
     const ctx = try TraceContext.new(allocator);
     const formatted = ctx.format_w3c();
-    
+
     // Should be 55 characters long
     try std.testing.expectEqual(@as(usize, 55), formatted.len);
     // Should start with "00-"
