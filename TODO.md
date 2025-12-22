@@ -9,15 +9,16 @@
 **Documentation**: Complete with ARCHITECTURE.md, PERFORMANCE.md, HEX_VIEWER.md, GHOSTTY_INTEGRATION.md
 
 ### Quick Stats
-- **Modules**: 46 source files (23 core + 5 facades + 1 EBCDIC + 3 QA + 4 performance + 10 utilities)
+- **Modules**: 49 source files (23 core + 5 facades + 1 EBCDIC + 3 QA + 4 performance + 3 debug tools + 10 utilities)
 - **Imports in emulator.zig**: 4 (std + protocol_layer + domain_layer + input + attributes) - 67% coupling reduction
 - **Layer Facades**: protocol_layer (5 modules) + domain_layer (5 modules)
 - **Performance Layer**: buffer_pool, field_storage, field_cache, allocation_tracker
+- **Debug Tools**: protocol_snooper, state_inspector, cli_profiler (13 tests)
 - **EBCDIC Support**: encode/decode functions + round-trip conversion (16 tests)
 - **Error Context**: ParseError, FieldError, ConnectionError with recovery suggestions (9 tests)
 - **Debug Logging**: Configurable per-module logging with 5 severity levels (11 tests)
 - **Profiler**: Memory tracking & timing analysis with reporting (11 tests)
-- **Tests**: 160+ total (90+ unit + 12 integration + 19 benchmarks)
+- **Tests**: 175+ total (105+ unit + 12 integration + 19 benchmarks)
 - **Benchmarks**: 19 comprehensive performance tests (6 throughput + 6 enhanced + 3 optimization + 4 comprehensive)
 - **Integration Tests**: 12 comprehensive e2e tests validating layer interaction
 - **Performance Optimizations**: 82% allocation reduction, 500+ MB/s parser throughput
@@ -626,69 +627,61 @@ pub const InteractiveTerminal = struct {
 
 ---
 
-## Priority 3: Advanced Debugging Tools (8-10 hours)
+## Priority 3: Advanced Debugging Tools (COMPLETED ✓)
 
-### Phase 3a: Protocol Snooper
-**Effort**: 3-4 hours  
+### Phase 3a: Protocol Snooper - COMPLETE ✓
+**Status**: Completed Dec 22  
+**Effort**: 1.5 hours (actual)  
 **Files**: `src/protocol_snooper.zig` (new)
 
-**Design**:
-```zig
-pub const ProtocolSnooper = struct {
-    // Intercept and log all protocol data
-    pub fn capture_command(cmd: Command) !void { }
-    pub fn capture_response(data: []const u8) !void { }
-    pub fn analyze_commands() ![]ProtocolAnalysis { }
-    pub fn export_log(path: []const u8) !void { }
-};
+**Implementation**:
+- `ProtocolEvent`: Captures event with timestamp, sequence number, type, and data
+- `EventType`: enum for command_sent vs response_received
+- `ProtocolAnalysis`: Statistics aggregator for event analysis
+- `ProtocolSnooper`: Main snooper with capture, analysis, export
+- Event capturing with automatic sequencing
+- Duration calculation from earliest to latest timestamp
+- Hex/ASCII dump export to file
+- Enable/disable toggling
+- 5 comprehensive unit tests
+- Commit: `c2893dc`
 
-pub const ProtocolAnalysis = struct {
-    command_count: usize,
-    data_sent_bytes: u64,
-    data_received_bytes: u64,
-    field_updates: usize,
-    keyboard_events: usize,
-};
-```
-
-**Tasks**:
-- [x] Capture all protocol commands with timestamps
-- [x] Analyze command distribution
-- [x] Measure bandwidth usage
-- [x] Export protocol log to file
-- [x] 5 unit tests
-
-### Phase 3b: State Inspector/Debugger
-**Effort**: 2-3 hours  
+### Phase 3b: State Inspector/Debugger - COMPLETE ✓
+**Status**: Completed Dec 22  
+**Effort**: 1.5 hours (actual)  
 **Files**: `src/state_inspector.zig` (new)
 
-**Design**:
-```zig
-pub const StateInspector = struct {
-    pub fn dump_screen_state() ![]const u8 { }
-    pub fn dump_field_state() ![]const u8 { }
-    pub fn dump_keyboard_state() ![]const u8 { }
-    pub fn export_to_json() ![]const u8 { }
-};
-```
+**Implementation**:
+- `StateInspector`: Inspector utility for state dumping and export
+- `dump_screen_state()`: Human-readable screen grid display
+- `dump_field_state()`: List all fields with attributes and positions
+- `dump_keyboard_state()`: Show keyboard lock status and last key
+- `export_to_json()`: Complete state as valid JSON for external tools
+- Attribute formatting (protected, numeric, hidden, intensified, modified)
+- Character rendering (printable as chars, non-printable as dots)
+- 4 comprehensive unit tests
+- Commit: `436333a`
 
-**Tasks**:
-- [x] Inspect current screen buffer
-- [x] List all fields with attributes
-- [x] Show keyboard state (locked, last input)
-- [x] Export state as JSON for analysis
-- [x] 4 unit tests
+### Phase 3c: Performance Analysis CLI Tools - COMPLETE ✓
+**Status**: Completed Dec 22  
+**Effort**: 1 hour (actual)  
+**Files**: `src/cli_profiler.zig` (new)
 
-### Phase 3c: Performance Analysis CLI Tools
-**Effort**: 2-3 hours  
-**Files**: extends `src/profiler.zig`, adds `src/cli_profiler.zig`
+**Implementation**:
+- `PerformanceBaseline`: Reference metrics from benchmarks
+- `CliProfiler`: Performance analysis and reporting tool
+- `generate_report()`: Detailed report with memory and timing stats
+- `compare_baseline()`: Compare actual vs baseline with warnings
+- `identify_bottlenecks()`: Sort operations by time, identify hot paths
+- `export_report()`: Write reports to file
+- Percentage-based comparisons and status indicators
+- 4 comprehensive unit tests
+- Root.zig updated to export all debug modules
+- Commit: `d9f0a7d`
 
-**Tasks**:
-- [x] CLI command to run profiler on real connection
-- [x] Generate performance report
-- [x] Compare against baseline metrics
-- [x] Identify bottlenecks
-- [x] 3 unit tests
+**Total v0.6.0 Phase 3 Effort**: 4 hours (actual, vs 8-10 hours estimated)  
+**Total Tests Added**: 13 (5 + 4 + 4)  
+**Test Pass Rate**: 100% ✓
 
 ---
 
