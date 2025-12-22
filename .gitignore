@@ -39,3 +39,8 @@ zig-out/
 # Misc
 *.log
 .netrwhist
+
+# Local test binaries
+/rest_client
+/test_count
+/test_screen_capture
