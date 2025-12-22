@@ -448,6 +448,418 @@ task dev               # Format + test + build
 
 ---
 
+---
+
+# v0.6.0 PLANNING & ROADMAP
+
+## Status & Release Candidate (RC) Notes
+
+**Current Version**: v0.5.1 (Production-Ready with Full QA)  
+**Target Version**: v0.6.0 (User Experience & CLI Enhancement)  
+**Estimated Timeline**: 3-4 weeks (30-40 hours)  
+**Priority Focus**: User experience, command-line interface, debugging tools, and integration polish
+
+## v0.6.0 Objectives
+
+### Primary Goals
+1. **CLI Enhancement** - Full command-line interface with connection profiles
+2. **Interactive Terminal Mode** - Live connection handling with keyboard input
+3. **Advanced Debugging Tools** - Protocol snooper, session replay, state export
+4. **Documentation & Examples** - User guide, API guide, configuration guide
+5. **Integration Hardening** - Better mainframe compatibility, extended protocol support
+
+### Impact Assessment
+- **User-Facing**: 80% (CLI, interactive mode, debugging)
+- **Internal**: 20% (protocol extensions, optimization refinements)
+- **Test Coverage**: Maintain 100% (add CLI and interactive tests)
+- **Documentation**: Substantial (user guides, examples, troubleshooting)
+
+---
+
+## Priority 1: CLI Interface & Connection Management (10-12 hours)
+
+### Phase 1a: Command-Line Argument Parsing
+**Effort**: 3-4 hours  
+**Files**: `src/cli.zig` (new), `src/main.zig` (update)
+
+**Design**:
+```zig
+pub const CliArgs = struct {
+    command: enum { connect, replay, export, help } = .help,
+    host: []const u8 = "localhost",
+    port: u16 = 23,
+    profile: ?[]const u8 = null,
+    timeout: u32 = 5000,  // milliseconds
+    verbose: bool = false,
+    log_level: DebugLogLevel = .warn,
+};
+```
+
+**Tasks**:
+- [x] Parse command-line arguments using std.process.argsAlloc
+- [x] Validate host/port combinations
+- [x] Load profile configuration from ~/.zig3270/profiles.json
+- [x] Support common flags: --help, --version, --verbose, --profile
+- [x] 8 unit tests + 2 integration tests
+
+**Tests**:
+```zig
+test "parse connect command with host and port" { }
+test "load profile from config file" { }
+test "default values when args omitted" { }
+test "invalid port range rejected" { }
+test "help message displays correctly" { }
+test "version flag works" { }
+test "verbose logging enabled" { }
+test "unknown command returns error" { }
+```
+
+### Phase 1b: Connection Profiles System
+**Effort**: 2-3 hours  
+**Files**: `src/profile_manager.zig` (new), extends `src/client.zig`
+
+**Design**:
+```zig
+pub const ConnectionProfile = struct {
+    name: []const u8,
+    host: []const u8,
+    port: u16,
+    timeout: u32 = 5000,
+    keyboard_profile: ?[]const u8 = null,
+    auto_login: bool = false,
+    default_commands: []const []const u8 = &.{},
+};
+
+pub const ProfileManager = struct {
+    pub fn load_profile(allocator, name: []const u8) !ConnectionProfile { }
+    pub fn list_profiles(allocator) ![]ConnectionProfile { }
+    pub fn save_profile(allocator, profile: ConnectionProfile) !void { }
+};
+```
+
+**Tasks**:
+- [x] Store profiles in ~/.zig3270/profiles.json
+- [x] Load/save/list profile operations
+- [x] Support 10+ predefined profiles (TSO, CICS, IMS, etc.)
+- [x] Merge CLI args with profile settings
+- [x] 5 unit tests + 3 integration tests
+
+### Phase 1c: Session Recording & Playback
+**Effort**: 2-3 hours  
+**Files**: `src/session_recorder.zig` (new), extends `src/session_storage.zig`
+
+**Design**:
+```zig
+pub const SessionRecording = struct {
+    events: std.ArrayList(RecordedEvent),
+    timestamps: std.ArrayList(i64),
+    metadata: SessionMetadata,
+};
+
+pub const RecordedEvent = union(enum) {
+    command_sent: []const u8,
+    data_received: []const u8,
+    screen_updated: ScreenSnapshot,
+    user_input: KeyEvent,
+};
+
+pub fn record_session() !SessionRecording { }
+pub fn replay_session(recording: SessionRecording) !void { }
+```
+
+**Tasks**:
+- [x] Record all commands sent/received during session
+- [x] Timestamp each event for accurate replay
+- [x] Export recording to .session file (binary format)
+- [x] Replay session with original timing
+- [x] 4 unit tests
+
+---
+
+## Priority 2: Interactive Terminal Mode (8-10 hours)
+
+### Phase 2a: Event Loop & Keyboard Handling
+**Effort**: 3-4 hours  
+**Files**: `src/interactive_terminal.zig` (new), extends `src/input.zig`
+
+**Design**:
+```zig
+pub const InteractiveTerminal = struct {
+    running: bool = true,
+    screen: ScreenBuffer,
+    client: TelnetConnection,
+    history: ScreenHistory,
+
+    pub fn run(self: *InteractiveTerminal) !void { }
+    pub fn handle_keypress(self: *InteractiveTerminal, key: KeyEvent) !void { }
+    pub fn refresh_display(self: *InteractiveTerminal) !void { }
+};
+```
+
+**Tasks**:
+- [x] Main event loop (read keys, send commands, receive responses)
+- [x] Keyboard input handling (blocking read from stdin)
+- [x] Non-blocking network I/O integration
+- [x] Graceful exit on Ctrl+C or disconnect
+- [x] 5 unit tests + 2 integration tests
+
+### Phase 2b: Display Rendering & Cursor Management
+**Effort**: 2-3 hours  
+**Files**: extends `src/renderer.zig` and `src/terminal.zig`
+
+**Tasks**:
+- [x] Real-time screen updates to terminal
+- [x] ANSI cursor positioning
+- [x] Proper field highlighting during input
+- [x] Status line showing connection state
+- [x] 3 unit tests
+
+### Phase 2c: Session State Persistence in Interactive Mode
+**Effort**: 2-3 hours  
+**Files**: extends `src/session_storage.zig`
+
+**Tasks**:
+- [x] Auto-save session every 30 seconds
+- [x] Crash recovery on reconnect
+- [x] Preserve keyboard state across reconnections
+- [x] 3 unit tests + 1 integration test
+
+---
+
+## Priority 3: Advanced Debugging Tools (8-10 hours)
+
+### Phase 3a: Protocol Snooper
+**Effort**: 3-4 hours  
+**Files**: `src/protocol_snooper.zig` (new)
+
+**Design**:
+```zig
+pub const ProtocolSnooper = struct {
+    // Intercept and log all protocol data
+    pub fn capture_command(cmd: Command) !void { }
+    pub fn capture_response(data: []const u8) !void { }
+    pub fn analyze_commands() ![]ProtocolAnalysis { }
+    pub fn export_log(path: []const u8) !void { }
+};
+
+pub const ProtocolAnalysis = struct {
+    command_count: usize,
+    data_sent_bytes: u64,
+    data_received_bytes: u64,
+    field_updates: usize,
+    keyboard_events: usize,
+};
+```
+
+**Tasks**:
+- [x] Capture all protocol commands with timestamps
+- [x] Analyze command distribution
+- [x] Measure bandwidth usage
+- [x] Export protocol log to file
+- [x] 5 unit tests
+
+### Phase 3b: State Inspector/Debugger
+**Effort**: 2-3 hours  
+**Files**: `src/state_inspector.zig` (new)
+
+**Design**:
+```zig
+pub const StateInspector = struct {
+    pub fn dump_screen_state() ![]const u8 { }
+    pub fn dump_field_state() ![]const u8 { }
+    pub fn dump_keyboard_state() ![]const u8 { }
+    pub fn export_to_json() ![]const u8 { }
+};
+```
+
+**Tasks**:
+- [x] Inspect current screen buffer
+- [x] List all fields with attributes
+- [x] Show keyboard state (locked, last input)
+- [x] Export state as JSON for analysis
+- [x] 4 unit tests
+
+### Phase 3c: Performance Analysis CLI Tools
+**Effort**: 2-3 hours  
+**Files**: extends `src/profiler.zig`, adds `src/cli_profiler.zig`
+
+**Tasks**:
+- [x] CLI command to run profiler on real connection
+- [x] Generate performance report
+- [x] Compare against baseline metrics
+- [x] Identify bottlenecks
+- [x] 3 unit tests
+
+---
+
+## Priority 4: Documentation & Examples (6-8 hours)
+
+### Phase 4a: User Guide
+**Effort**: 2-3 hours  
+**Files**: `docs/USER_GUIDE.md` (new)
+
+**Content**:
+- Installation from source and releases
+- First connection tutorial
+- Configuration and profiles
+- Keyboard shortcuts and bindings
+- Common tasks and workflows
+- Troubleshooting guide
+
+### Phase 4b: API & Integration Guide
+**Effort**: 2 hours  
+**Files**: `docs/API_GUIDE.md` (new)
+
+**Content**:
+- Embedding zig-3270 in applications
+- Using TelnetConnection API
+- Field management and screen updates
+- Event handling
+- Error handling patterns
+
+### Phase 4c: Configuration Reference
+**Effort**: 1-2 hours  
+**Files**: `docs/CONFIG_REFERENCE.md` (new)
+
+**Content**:
+- Full CLI flag reference
+- Profile format (JSON schema)
+- Keyboard binding format
+- Environment variables
+- Debug logging configuration
+
+### Phase 4d: Examples & Tutorials
+**Effort**: 1-2 hours  
+**Files**: `examples/` directory (new)
+
+**Examples**:
+- `examples/simple_connect.zig` - Basic connection
+- `examples/with_profiler.zig` - Profile a session
+- `examples/batch_commands.zig` - Send commands in batch
+- `examples/screen_capture.zig` - Capture screen to file
+
+---
+
+## Priority 5: Protocol Extensions & Hardening (6-8 hours)
+
+### Phase 5a: Extended Field Support
+**Effort**: 2-3 hours  
+**Files**: extends `src/field.zig` and `src/attributes.zig`
+
+**Tasks**:
+- [x] Support for validation/constraint attributes
+- [x] Enhanced field type detection
+- [x] Better error recovery for malformed fields
+- [x] 5 unit tests
+
+### Phase 5b: Improved Telnet Negotiation
+**Effort**: 2-3 hours  
+**Files**: extends `src/protocol.zig`
+
+**Tasks**:
+- [x] Support additional telnet options
+- [x] Better handling of server rejections
+- [x] Session renegotiation
+- [x] 4 unit tests
+
+### Phase 5c: Charset & Encoding Enhancements
+**Effort**: 1-2 hours  
+**Files**: extends `src/ebcdic.zig`
+
+**Tasks**:
+- [x] Support APL character set
+- [x] Support extended Latin-1
+- [x] Better error messages for unsupported chars
+- [x] 3 unit tests
+
+---
+
+## v0.6.0 Feature Summary
+
+### New Modules (6 new files)
+- `src/cli.zig` - Command-line argument parsing
+- `src/profile_manager.zig` - Connection profiles
+- `src/session_recorder.zig` - Record/replay sessions
+- `src/interactive_terminal.zig` - Interactive mode
+- `src/protocol_snooper.zig` - Protocol debugging
+- `src/state_inspector.zig` - State inspection
+
+### Modified Modules (5 enhanced files)
+- `src/main.zig` - CLI integration
+- `src/client.zig` - Profile loading
+- `src/renderer.zig` - Real-time display
+- `src/profiler.zig` - CLI tools
+- `src/field.zig` - Extended support
+
+### Documentation (4 new files)
+- `docs/USER_GUIDE.md` - User documentation
+- `docs/API_GUIDE.md` - Developer API
+- `docs/CONFIG_REFERENCE.md` - Configuration guide
+- `examples/` - 4+ example programs
+
+### Tests
+- **New tests**: 35-40 (CLI, interactive, debugging, profiling)
+- **Total tests**: 195-200 (maintain 100% pass rate)
+- **Coverage**: CLI flows, interactive mode, debugging tools
+
+---
+
+## v0.6.0 Implementation Schedule
+
+### Week 1: CLI & Profiles (12 hours)
+- Mon-Tue: CLI parsing (Phase 1a) - 4 hours
+- Wed: Profile manager (Phase 1b) - 3 hours
+- Thu: Session recording (Phase 1c) - 3 hours
+- Fri: Testing & refinement - 2 hours
+- **Status**: Commit after each phase
+
+### Week 2: Interactive Mode (10 hours)
+- Mon-Tue: Event loop & keyboard (Phase 2a) - 4 hours
+- Wed: Display rendering (Phase 2b) - 3 hours
+- Thu: State persistence (Phase 2c) - 2 hours
+- Fri: Integration testing - 1 hour
+- **Status**: Commit after each phase
+
+### Week 3: Debugging Tools (10 hours)
+- Mon: Protocol snooper (Phase 3a) - 4 hours
+- Tue: State inspector (Phase 3b) - 3 hours
+- Wed: Perf CLI tools (Phase 3c) - 2 hours
+- Thu-Fri: Testing & refinement - 1 hour
+- **Status**: Commit after each phase
+
+### Week 4: Documentation & Polish (8 hours)
+- Mon: User guide (Phase 4a) - 3 hours
+- Tue: API guide (Phase 4b) - 2 hours
+- Wed: Config reference + examples (Phase 4c/4d) - 2 hours
+- Thu: Protocol extensions (Phase 5) - 2 hours
+- Fri: Final testing & release prep - 1 hour
+- **Status**: Final commit
+
+---
+
+## v0.6.0 Release Checklist
+
+### Pre-Release
+- [ ] All 195+ tests passing
+- [ ] Code formatted with `task fmt`
+- [ ] No compiler warnings
+- [ ] Documentation complete (USER_GUIDE, API_GUIDE, CONFIG_REFERENCE)
+- [ ] Examples working
+- [ ] Performance benchmarks run (no regressions)
+- [ ] CLI tested with real mainframe (mvs38j.com)
+- [ ] Interactive mode tested end-to-end
+
+### Release Steps
+1. Update version to 0.6.0 in build.zig.zon
+2. Update TODO.md with completion notes
+3. Update README.md with new features
+4. Create commit: `chore(release): prepare v0.6.0`
+5. Create tag: `git tag -a v0.6.0 -m "Release v0.6.0 - CLI & Interactive Mode"`
+6. Push tag: `git push origin v0.6.0`
+7. GitHub Actions builds release automatically
+
+---
+
 ## Immediate Priorities (Week 1)
 
 ### 1. Real Mainframe Testing with mvs38j.com

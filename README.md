@@ -137,26 +137,26 @@ The codebase follows a **5-layer architecture with facade pattern** for minimal 
 ┌─────────────────────────────────┐
 │  Application Layer              │ main.zig, emulator.zig, client.zig
 ├─────────────────────────────────┤
-│  Domain Layer Facade           │ domain_layer.zig (consolidates 5 modules)
-│    ├─ Screen & Fields         │ screen.zig, field.zig, terminal.zig
-│    ├─ Execution              │ executor.zig, data_entry.zig  
-│    └─ Session & History     │ session_storage.zig, screen_history.zig
+│  Domain Layer Facade            │ domain_layer.zig (consolidates 5 modules)
+│    ├─ Screen & Fields           │ screen.zig, field.zig, terminal.zig
+│    ├─ Execution                 │ executor.zig, data_entry.zig  
+│    └─ Session & History         │ session_storage.zig, screen_history.zig
 ├─────────────────────────────────┤
-│  Protocol Layer Facade         │ protocol_layer.zig (consolidates 5 modules)
-│    ├─ Core Protocol         │ protocol.zig, command.zig
-│    ├─ Parsing              │ parser.zig, stream_parser.zig, parse_utils.zig
-│    └─ Optimization          │ parser_optimization.zig
+│  Protocol Layer Facade          │ protocol_layer.zig (consolidates 5 modules)
+│    ├─ Core Protocol             │ protocol.zig, command.zig
+│    ├─ Parsing                   │ parser.zig, stream_parser.zig, parse_utils.zig
+│    └─ Optimization              │ parser_optimization.zig
 ├─────────────────────────────────┤
 │  Network Layer                  │ client.zig, network_resilience.zig, mock_server.zig
 ├─────────────────────────────────┤
 │  Performance Layer              │ buffer_pool.zig, field_storage.zig, field_cache.zig
-│    ├─ Tracking              │ allocation_tracker.zig, profiler.zig
-│    └─ Benchmarking          │ benchmark*.zig (4 files)
+│    ├─ Tracking                  │ allocation_tracker.zig, profiler.zig
+│    └─ Benchmarking              │ benchmark*.zig (4 files)
 ├─────────────────────────────────┤
 │  Utilities & Tools              │ keyboard_config.zig, renderer.zig, attributes.zig
-│    ├─ Character Support      │ ebcdic.zig, ansi_colors.zig
-│    ├─ Debugging            │ debug_log.zig, error_context.zig, hex_viewer.zig
-│    └─ Integration         │ ghostty_vt*.zig, integration_test.zig
+│    ├─ Character Support         │ ebcdic.zig, ansi_colors.zig
+│    ├─ Debugging                 │ debug_log.zig, error_context.zig, hex_viewer.zig
+│    └─ Integration               │ ghostty_vt*.zig, integration_test.zig
 └─────────────────────────────────┘
 ```
 
