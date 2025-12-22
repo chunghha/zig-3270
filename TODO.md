@@ -1541,6 +1541,81 @@ See **V0_8_0_PLAN.md** for comprehensive roadmap.
 
 ---
 
+## v0.10.1 Development Plan (Error Messages & Logging Polish)
+
+**Status**: Priority 2 COMPLETE ✓  
+**Delivery Date**: Dec 22, 2024  
+**Actual Effort**: 8 hours (within estimate)  
+**Tests Delivered**: 24 new tests (all passing)  
+
+### Priority 2: Error Messages & Logging Polish - COMPLETE ✓
+
+#### 2a: Error Message Improvement - COMPLETE ✓
+**File**: `src/error_context.zig` (enhanced)
+
+Features:
+- ErrorCode enum with 22 standardized codes (0x1000-0x4fff)
+- Error codes organized by category: parse (0x1000), field (0x2000), connection (0x3000), config (0x4000)
+- Enhanced ParseError, FieldError, ConnectionError structs
+- Field error context: field_id, attributes
+- Connection error context: timeout_ms
+- All error messages include error code and recovery guidance
+- Changed messaging from "Suggestion" to "Recovery" for clarity
+
+Tests: 9 new tests validating error codes and message generation
+
+#### 2b: Logging Clarity & Configuration - COMPLETE ✓
+**File**: `src/debug_log.zig` (enhanced)
+
+Features:
+- Format enum: text (default) and json output formats
+- JSON logging: `{"timestamp":ms,"level":"LEVEL","module":"module","message":"..."}`
+- Environment variable support:
+  - `ZIG_3270_LOG_LEVEL`: disabled, error, warn, info, debug, trace
+  - `ZIG_3270_LOG_FORMAT`: text or json
+- `init_from_env()` function for auto-configuration
+- `set_format()` to dynamically change output format
+- Backward compatible: defaults to text if env vars not set
+
+Tests: 4 new tests for JSON format, environment variables, format switching
+
+#### 2c: Configuration Validation - COMPLETE ✓
+**File**: `src/config_validator.zig` (new)
+
+Features:
+- ConfigValidator struct with comprehensive validation
+- Validates: host, port, timeouts, retries, log levels, formats
+- Clear error reporting with error codes (0x4000-0x4fff)
+- ValidationError struct with recovery guidance
+- Validation methods for each field:
+  - `validate_host()`: checks characters, length, format
+  - `validate_port()`: checks range, privileges
+  - `validate_timeouts()`: checks ranges and sanity
+  - `validate_retries()`: checks reasonable bounds
+  - `validate_log_level()`: ensures valid level
+  - `validate_log_format()`: ensures valid format
+- `error_report()` generates formatted error output
+
+Tests: 11 new tests covering all validation scenarios
+
+### Summary
+- **Total Tests Added**: 24 (all passing)
+- **Code Added**: ~750 LOC
+- **Files Modified**: error_context.zig (enhanced), debug_log.zig (enhanced)
+- **Files Created**: config_validator.zig (new)
+- **Compiler Warnings**: 0
+- **Code Formatting**: 100% compliant
+- **Commits**: 4 conventional commits
+
+**Key Improvements**:
+- Standardized error codes enable better error tracking and automation
+- JSON logging supports modern observability tools
+- Environment variable configuration is DevOps-friendly
+- Configuration validation catches issues at startup
+- Enhanced error messages guide users to resolution
+
+---
+
 ## v0.9.0 Development Plan (Enterprise Features)
 
 **Status**: Planning phase  
