@@ -1,6 +1,6 @@
 .{
     .name = .zig_3270,
-    .version = "0.5.1",
+    .version = "0.7.0",
     .fingerprint = 0x9a81cad6c5291466,
     .dependencies = .{
         .libghostty_vt = .{
