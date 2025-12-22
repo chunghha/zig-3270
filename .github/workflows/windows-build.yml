@@ -1,0 +1,181 @@
+name: Windows Build & Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'build.zig*'
+      - '.github/workflows/windows-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'build.zig*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Test on Windows
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        optimization: [Debug, ReleaseFast, ReleaseSmall, ReleaseSafe]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: master
+
+      - name: Show Zig version
+        run: zig version
+
+      - name: Build project
+        run: |
+          zig build -Doptimize=${{ matrix.optimization }}
+        env:
+          ZIG_GLOBAL_CACHE_DIR: ${{ runner.temp }}\zig-cache
+
+      - name: Run unit tests
+        run: |
+          zig build test
+        timeout-minutes: 30
+
+      - name: Run benchmarks (Debug only)
+        if: matrix.optimization == 'Debug'
+        run: |
+          zig build benchmark
+        timeout-minutes: 60
+
+      - name: Check code formatting
+        run: |
+          zig fmt --check src/ examples/
+
+      - name: Create release artifacts (ReleaseFast only)
+        if: matrix.optimization == 'ReleaseFast'
+        run: |
+          mkdir -p artifacts\bin
+          mkdir -p artifacts\lib
+          copy zig-out\bin\*.exe artifacts\bin\
+          copy zig-out\lib\*.dll artifacts\lib\ 2>nul || echo "No DLLs to copy"
+          copy zig-out\lib\*.a artifacts\lib\ 2>nul || echo "No static libs"
+
+      - name: Upload build artifacts
+        if: matrix.optimization == 'ReleaseFast'
+        uses: actions/upload-artifact@v4
+        with:
+          name: zig-3270-windows-${{ runner.arch }}
+          path: artifacts/
+          retention-days: 7
+
+  cross-compile:
+    name: Cross-compile from Windows to other targets
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: master
+
+      - name: Cross-compile to Linux x86_64
+        run: |
+          zig build -Dtarget=x86_64-linux-musl -Doptimize=ReleaseFast
+
+      - name: Cross-compile to macOS x86_64
+        run: |
+          zig build -Dtarget=x86_64-macos -Doptimize=ReleaseFast
+
+      - name: Cross-compile to Windows ARM64
+        run: |
+          zig build -Dtarget=aarch64-windows-gnu -Doptimize=ReleaseFast
+
+  test-matrix:
+    name: Test on Windows variants
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-2019, windows-2022]
+        zig-version: [master]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: ${{ matrix.zig-version }}
+
+      - name: Run tests on ${{ matrix.os }}
+        run: |
+          zig build test
+        timeout-minutes: 30
+
+  create-release:
+    name: Create GitHub Release (on tag)
+    runs-on: windows-latest
+    needs: [build, test-matrix]
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: master
+
+      - name: Build release artifacts
+        run: |
+          zig build -Doptimize=ReleaseFast
+          mkdir -p release\bin
+          mkdir -p release\lib
+          copy zig-out\bin\*.exe release\bin\
+          copy zig-out\lib\*.dll release\lib\ 2>nul || echo "No DLLs"
+          copy zig-out\lib\*.a release\lib\ 2>nul || echo "No static libs"
+
+      - name: Create ZIP archive
+        run: |
+          powershell -Command "Compress-Archive -Path release\* -DestinationPath zig-3270-${{ github.ref_name }}-windows-${{ runner.arch }}.zip"
+
+      - name: Get version from tag
+        id: version
+        run: |
+          $tag = "${{ github.ref }}" -replace "refs/tags/", ""
+          echo "version=$tag" >> $env:GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            zig-3270-${{ steps.version.outputs.version }}-windows-*.zip
+            CHANGELOG.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  notify:
+    name: Notify on failure
+    runs-on: windows-latest
+    needs: [build, test-matrix]
+    if: failure()
+    
+    steps:
+      - name: Report failure
+        run: |
+          echo "Windows build failed!"
+          exit 1

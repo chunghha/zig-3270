@@ -31,6 +31,7 @@ pub const zero_copy_parser = @import("zero_copy_parser.zig");
 pub const chaos_testing = @import("chaos_testing.zig");
 pub const c_bindings = @import("c_bindings.zig");
 pub const opentelemetry = @import("opentelemetry.zig");
+pub const windows_console = @import("windows_console.zig");
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
