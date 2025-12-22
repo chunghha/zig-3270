@@ -7,6 +7,7 @@ pub const state_inspector = @import("state_inspector.zig");
 pub const cli_profiler = @import("cli_profiler.zig");
 pub const structured_fields = @import("structured_fields.zig");
 pub const lu3_printer = @import("lu3_printer.zig");
+pub const graphics_support = @import("graphics_support.zig");
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
