@@ -10,6 +10,7 @@ These examples show how to use zig-3270 for common tasks:
 2. **with_profiler.zig** - Profile connection with memory and timing metrics
 3. **batch_commands.zig** - Send multiple commands in sequence
 4. **screen_capture.zig** - Capture and inspect screen state
+5. **rest_client.zig** - REST API client library with full session/audit/compliance features
 
 ## Building Examples
 
@@ -118,6 +119,39 @@ Capture and inspect screen state:
 
 **Code size:** ~200 lines
 
+### Example 5: REST API Client
+
+RESTful HTTP client library for zig-3270 REST API:
+
+```bash
+./zig-cache/bin/zig-3270-example-rest-client
+```
+
+**Output:**
+- Client library demonstration
+- Supported operations and features
+- Configuration options
+
+**What it demonstrates:**
+- REST API client types and configuration
+- Session management operations
+- Screen capture via REST API
+- Input injection
+- Session control (suspend, resume, migrate)
+- Endpoint health checks
+- Audit log querying
+- Compliance reporting
+- Authentication support (bearer token, basic auth)
+
+**Code size:** ~600 lines (production-ready library)
+
+**Features:**
+- HttpConfig with bearer token and basic auth support
+- RestClient with session management methods
+- Type-safe request/response handling
+- Support for all enterprise API endpoints
+- Proper error handling and resource cleanup
+
 ## Common Options
 
 All examples support these flags:
@@ -142,6 +176,9 @@ All examples support these flags:
 
 # 4. Send batch commands
 ./zig-cache/bin/zig-3270-example-batch --host mainframe.example.com --commands "cmd1,cmd2"
+
+# 5. Use REST API client for enterprise features
+./zig-cache/bin/zig-3270-example-rest-client
 ```
 
 ## Extending Examples
@@ -208,6 +245,11 @@ For detailed API documentation, see:
 | `field` | Field management |
 | `profiler` | Performance profiling |
 | `state_inspector` | State inspection and export |
+| `session_pool` | Multi-session management |
+| `load_balancer` | Session distribution |
+| `audit_log` | Event logging for compliance |
+| `rest_api` | HTTP REST API interface |
+| `event_webhooks` | Event notifications |
 
 ## Performance Tips
 
@@ -227,5 +269,5 @@ After running examples:
 
 ---
 
-**zig-3270 v0.7.0** - Example Programs  
-Educational • Production-Ready • Well-Documented
+**zig-3270 v0.9.4** - Example Programs  
+Enterprise • Production-Ready • Well-Documented
