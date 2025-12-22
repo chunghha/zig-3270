@@ -8,9 +8,9 @@ A high-performance TN3270 (3270 terminal) emulator written in Zig with comprehen
 
 - **Language**: Pure Zig with optional libghostty-vt integration
 - **Platform**: macOS, Linux (cross-compilation supported)
-- **Test Coverage**: 192+ tests, 100% passing
-- **Codebase**: ~9,232 lines, 62 modules
-- **Status**: v0.7.0 - Production-ready with CLI, interactive mode, debugging tools, and comprehensive documentation
+- **Test Coverage**: 250+ tests, 100% passing
+- **Codebase**: ~10,500 lines, 70 modules
+- **Status**: v0.10.2 - Production-hardened with enterprise features, monitoring, and advanced debugging
 
 ## Dependencies
 
@@ -69,6 +69,10 @@ A high-performance TN3270 (3270 terminal) emulator written in Zig with comprehen
 - ✓ Screen history & scrollback buffer navigation
 - ✓ ANSI color support for field attributes
 - ✓ Error recovery guidance
+- ✓ Multi-session pool management (v0.9.0+)
+- ✓ Load balancing with automatic failover (v0.9.0+)
+- ✓ Audit logging and compliance tracking (v0.9.0+)
+- ✓ REST API with HTTP interface (v0.9.0+)
 
 ### Advanced Debugging
 - ✓ Protocol snooper for event capture and analysis
@@ -281,7 +285,7 @@ docs: document protocol.zig constants
 - ✓ Comprehensive error handling
 - ✓ Full test coverage (121+ tests)
 
-### Implemented Features (v0.5.1 - v0.7.0)
+### Implemented Features (v0.5.1 - v0.10.2)
 
 **v0.5.1**:
 - Core architecture with 5-layer design and facade pattern
@@ -306,6 +310,33 @@ docs: document protocol.zig constants
 - Comprehensive documentation (USER_GUIDE, API_GUIDE, CONFIG_REFERENCE)
 - Protocol extensions (field validation, telnet negotiation, charset support)
 - Example programs for common use cases
+
+**v0.9.0**:
+- Multi-session pool management for concurrent connections
+- Load balancing with multiple strategies (round-robin, weighted, least-connection)
+- Automatic failover and health monitoring
+- Comprehensive audit logging and compliance tracking (SOC2, HIPAA, PCI-DSS)
+- REST API with full CRUD operations and webhook support
+- Enterprise deployment guide and monitoring setup
+
+**v0.10.0**:
+- Stability regression testing (33 tests)
+- Enhanced error messages with error codes and recovery guidance
+- Logging clarity with JSON output format support
+- Production hardening with security review and resource limits
+- Metrics export for Prometheus and JSON monitoring systems
+- Disaster recovery testing framework
+
+**v0.10.1**:
+- Error message improvements with standardized error codes
+- Logging configuration via environment variables
+- Configuration validation with clear error reporting
+
+**v0.10.2**:
+- Security audit and input validation
+- Resource management with configurable limits
+- Operational monitoring and metrics export
+- Disaster recovery testing suite
 
 ## Examples
 
@@ -363,17 +394,35 @@ See AGENTS.md for detailed development guidelines.
 
 ## Documentation
 
+### Getting Started
 - [QUICKSTART.md](QUICKSTART.md) - Quick reference and development workflow
 - [AGENTS.md](AGENTS.md) - Development methodology and guidelines
+
+### Core Documentation
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System design and module structure
 - [docs/PERFORMANCE.md](docs/PERFORMANCE.md) - Performance profiling and optimization guide
-- [docs/CI_CD.md](docs/CI_CD.md) - CI/CD pipeline and release process
+- [docs/PROTOCOL.md](docs/PROTOCOL.md) - TN3270 protocol specification
+
+### User & API Documentation
 - [docs/USER_GUIDE.md](docs/USER_GUIDE.md) - User documentation and terminal usage
 - [docs/API_GUIDE.md](docs/API_GUIDE.md) - Developer API and embedding guide
 - [docs/CONFIG_REFERENCE.md](docs/CONFIG_REFERENCE.md) - Configuration options and CLI flags
+
+### Operations & Deployment
+- [docs/OPERATIONS.md](docs/OPERATIONS.md) - Operations and troubleshooting guide (v0.10.3)
+- [docs/PERFORMANCE_TUNING.md](docs/PERFORMANCE_TUNING.md) - Performance tuning guide (v0.10.3)
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deployment guide (v0.9.0+)
+- [docs/INTEGRATION_ADVANCED.md](docs/INTEGRATION_ADVANCED.md) - Advanced integration patterns (v0.10.0+)
+
+### Specialized Topics
 - [docs/GHOSTTY_INTEGRATION.md](docs/GHOSTTY_INTEGRATION.md) - VT integration details
 - [docs/HEX_VIEWER.md](docs/HEX_VIEWER.md) - Hex viewer utility documentation
-- [docs/PROTOCOL.md](docs/PROTOCOL.md) - TN3270 protocol specification
+- [docs/CI_CD.md](docs/CI_CD.md) - CI/CD pipeline and release process
+- [docs/taskfile/INDEX.md](docs/taskfile/INDEX.md) - Taskfile documentation (v0.10.x tasks)
+
+### Examples & Resources
+- [examples/INDEX.md](examples/INDEX.md) - Example programs and usage guide
+- [releases/v0.10.0/INDEX.md](releases/v0.10.0/INDEX.md) - v0.10.0 release archive and notes
 
 ## Releases
 
