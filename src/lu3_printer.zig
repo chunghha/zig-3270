@@ -4,6 +4,55 @@ const error_context = @import("error_context.zig");
 
 /// LU3 (Logical Unit 3) Printing Support
 /// Handles print job requests and management for TN3270 sessions
+/// SCS (SAA Composite Sequence) Command enumeration - Core printing commands
+pub const SCSCommand = enum(u8) {
+    set_absolute_horizontal = 0x2B, // Absolute horizontal position
+    set_absolute_vertical = 0x2C, // Absolute vertical position
+    set_relative_horizontal = 0x2D, // Relative horizontal position
+    set_relative_vertical = 0x2E, // Relative vertical position
+    set_horizontal_tab_stop = 0x09, // Set horizontal tab
+    set_vertical_tab_stop = 0x0B, // Set vertical tab
+    carriage_return = 0x0D, // CR
+    line_feed = 0x0A, // LF
+    form_feed = 0x0C, // FF
+    escape = 0x1B, // Escape (for extended commands)
+    define_print_area = 0x34, // 4 - Define print area
+    set_page_size = 0x73, // s - Set page size
+    set_line_density = 0x6C, // l - Set line density
+    set_character_density = 0x63, // c - Set character density
+    set_font = 0x66, // f - Set font
+    set_color = 0x6D, // m - Set color
+    set_intensity = 0x69, // i - Set intensity
+    start_highlight = 0x71, // q - Start highlight
+    end_highlight = 0x72, // r - End highlight
+    underscore = 0x75, // u - Underscore
+    draw_box = 0x62, // b - Draw box
+    _, // Unknown commands
+};
+
+/// SCS Parameter structure
+pub const SCSParameter = struct {
+    command: SCSCommand,
+    param1: u8 = 0,
+    param2: u8 = 0,
+    param3: u16 = 0,
+
+    pub fn from_bytes(bytes: []const u8) ?SCSParameter {
+        if (bytes.len < 1) return null;
+
+        const cmd = std.meta.intToEnum(SCSCommand, bytes[0]) catch return null;
+
+        return .{
+            .command = cmd,
+            .param1 = if (bytes.len > 1) bytes[1] else 0,
+            .param2 = if (bytes.len > 2) bytes[2] else 0,
+            .param3 = if (bytes.len > 3)
+                (@as(u16, bytes[3]) << 8) | (if (bytes.len > 4) bytes[4] else 0)
+            else
+                0,
+        };
+    }
+};
 /// Print job status enumeration
 pub const PrintJobStatus = enum {
     queued,
@@ -226,11 +275,83 @@ pub const PrintCommandDetector = struct {
     }
 };
 
+/// SCS Command Processor for print formatting
+pub const SCSProcessor = struct {
+    allocator: std.mem.Allocator,
+    current_column: u16 = 1,
+    current_row: u16 = 1,
+    page_width: u16 = 132,
+    page_height: u16 = 66,
+    line_count: u32 = 0,
+
+    pub fn init(allocator: std.mem.Allocator) SCSProcessor {
+        return .{
+            .allocator = allocator,
+        };
+    }
+
+    /// Process an SCS command and return true if output was modified
+    pub fn process_command(self: *SCSProcessor, cmd: SCSCommand, param1: u8, param2: u8) bool {
+        return switch (cmd) {
+            .carriage_return => blk: {
+                self.current_column = 1;
+                break :blk true;
+            },
+            .line_feed => blk: {
+                if (self.current_row < self.page_height) {
+                    self.current_row += 1;
+                }
+                self.line_count += 1;
+                break :blk true;
+            },
+            .form_feed => blk: {
+                self.current_row = 1;
+                self.current_column = 1;
+                self.line_count += 1;
+                break :blk true;
+            },
+            .set_absolute_horizontal => blk: {
+                self.current_column = param1;
+                break :blk true;
+            },
+            .set_absolute_vertical => blk: {
+                self.current_row = param1;
+                break :blk true;
+            },
+            .set_relative_horizontal => blk: {
+                self.current_column += param1;
+                if (self.current_column > self.page_width) {
+                    self.current_column = self.page_width;
+                }
+                break :blk true;
+            },
+            .set_relative_vertical => blk: {
+                self.current_row += param1;
+                if (self.current_row > self.page_height) {
+                    self.current_row = self.page_height;
+                }
+                break :blk true;
+            },
+            .set_page_size => blk: {
+                self.page_width = param1;
+                self.page_height = param2;
+                break :blk true;
+            },
+            else => false,
+        };
+    }
+
+    pub fn get_position(self: SCSProcessor) struct { row: u16, col: u16 } {
+        return .{ .row = self.current_row, .col = self.current_column };
+    }
+};
+
 /// LU3 Printer controller
 pub const LU3Printer = struct {
     allocator: std.mem.Allocator,
     queue: PrintQueue,
     detector: PrintCommandDetector,
+    scs_processor: SCSProcessor,
     enabled: bool = true,
 
     pub fn init(allocator: std.mem.Allocator) LU3Printer {
@@ -238,6 +359,7 @@ pub const LU3Printer = struct {
             .allocator = allocator,
             .queue = PrintQueue.init(allocator),
             .detector = PrintCommandDetector.init(allocator),
+            .scs_processor = SCSProcessor.init(allocator),
         };
     }
 
@@ -534,4 +656,112 @@ test "lu3 printer get statistics" {
     const stats = printer.get_statistics();
     try std.testing.expectEqual(@as(usize, 2), stats.total_jobs);
     try std.testing.expectEqual(@as(usize, 1), stats.completed_jobs);
+}
+
+test "scs parameter from bytes carriage return" {
+    var buffer: [1]u8 = .{0x0D};
+    const param = SCSParameter.from_bytes(&buffer);
+
+    try std.testing.expect(param != null);
+    if (param) |p| {
+        try std.testing.expectEqual(SCSCommand.carriage_return, p.command);
+    }
+}
+
+test "scs parameter from bytes line feed" {
+    var buffer: [1]u8 = .{0x0A};
+    const param = SCSParameter.from_bytes(&buffer);
+
+    try std.testing.expect(param != null);
+    if (param) |p| {
+        try std.testing.expectEqual(SCSCommand.line_feed, p.command);
+    }
+}
+
+test "scs parameter from bytes with params" {
+    var buffer: [3]u8 = .{ 0x2B, 0x20, 0x00 };
+    const param = SCSParameter.from_bytes(&buffer);
+
+    try std.testing.expect(param != null);
+    if (param) |p| {
+        try std.testing.expectEqual(SCSCommand.set_absolute_horizontal, p.command);
+        try std.testing.expectEqual(@as(u8, 0x20), p.param1);
+    }
+}
+
+test "scs processor carriage return" {
+    var allocator = std.testing.allocator;
+    var processor = SCSProcessor.init(allocator);
+
+    processor.current_column = 50;
+    _ = processor.process_command(.carriage_return, 0, 0);
+
+    try std.testing.expectEqual(@as(u16, 1), processor.current_column);
+}
+
+test "scs processor line feed" {
+    var allocator = std.testing.allocator;
+    var processor = SCSProcessor.init(allocator);
+
+    processor.current_row = 10;
+    _ = processor.process_command(.line_feed, 0, 0);
+
+    try std.testing.expectEqual(@as(u16, 11), processor.current_row);
+    try std.testing.expectEqual(@as(u32, 1), processor.line_count);
+}
+
+test "scs processor form feed" {
+    var allocator = std.testing.allocator;
+    var processor = SCSProcessor.init(allocator);
+
+    processor.current_row = 50;
+    processor.current_column = 80;
+    _ = processor.process_command(.form_feed, 0, 0);
+
+    try std.testing.expectEqual(@as(u16, 1), processor.current_row);
+    try std.testing.expectEqual(@as(u16, 1), processor.current_column);
+}
+
+test "scs processor absolute horizontal" {
+    var allocator = std.testing.allocator;
+    var processor = SCSProcessor.init(allocator);
+
+    _ = processor.process_command(.set_absolute_horizontal, 25, 0);
+
+    try std.testing.expectEqual(@as(u16, 25), processor.current_column);
+}
+
+test "scs processor absolute vertical" {
+    var allocator = std.testing.allocator;
+    var processor = SCSProcessor.init(allocator);
+
+    _ = processor.process_command(.set_absolute_vertical, 30, 0);
+
+    try std.testing.expectEqual(@as(u16, 30), processor.current_row);
+}
+
+test "scs processor page size" {
+    var allocator = std.testing.allocator;
+    var processor = SCSProcessor.init(allocator);
+
+    const original_width = processor.page_width;
+    const original_height = processor.page_height;
+
+    _ = processor.process_command(.set_page_size, 80, 24);
+
+    try std.testing.expect(processor.page_width != original_width);
+    try std.testing.expectEqual(@as(u16, 80), processor.page_width);
+    try std.testing.expectEqual(@as(u16, 24), processor.page_height);
+}
+
+test "scs processor get position" {
+    var allocator = std.testing.allocator;
+    var processor = SCSProcessor.init(allocator);
+
+    processor.current_row = 15;
+    processor.current_column = 40;
+
+    const pos = processor.get_position();
+    try std.testing.expectEqual(@as(u16, 15), pos.row);
+    try std.testing.expectEqual(@as(u16, 40), pos.col);
 }

@@ -38,6 +38,172 @@ pub const StructuredFieldType = enum(u8) {
     }
 };
 
+/// 3270 Data Stream Attributes (WSF attributes)
+pub const DataStreamAttribute = struct {
+    attribute_type: enum(u8) {
+        default = 0x00,
+        foreground_color = 0x01,
+        background_color = 0x02,
+        intensity = 0x03,
+        blink = 0x04,
+        reverse = 0x05,
+        underline = 0x06,
+        invalid = 0xFF,
+        _ = undefined,
+    },
+    value: u8 = 0,
+
+    pub fn from_buffer(buffer: []const u8) ?DataStreamAttribute {
+        if (buffer.len < 2) return null;
+
+        const attr_type = switch (buffer[0]) {
+            0x00 => @as(@TypeOf(@as(DataStreamAttribute, undefined).attribute_type), .default),
+            0x01 => .foreground_color,
+            0x02 => .background_color,
+            0x03 => .intensity,
+            0x04 => .blink,
+            0x05 => .reverse,
+            0x06 => .underline,
+            else => return null,
+        };
+
+        return .{
+            .attribute_type = attr_type,
+            .value = buffer[1],
+        };
+    }
+
+    pub fn to_buffer(self: DataStreamAttribute, buffer: []u8) !usize {
+        if (buffer.len < 2) return error.BufferTooSmall;
+
+        buffer[0] = @intFromEnum(self.attribute_type);
+        buffer[1] = self.value;
+        return 2;
+    }
+};
+
+/// Font specification for WSF
+pub const FontSpec = struct {
+    font_id: u8,
+    code_page: u16 = 0,
+    height: u8 = 0,
+    width: u8 = 0,
+
+    pub fn from_buffer(buffer: []const u8) ?FontSpec {
+        if (buffer.len < 1) return null;
+
+        const code_page = if (buffer.len > 2)
+            (@as(u16, buffer[1]) << 8) | buffer[2]
+        else
+            0;
+
+        return .{
+            .font_id = buffer[0],
+            .code_page = code_page,
+            .height = if (buffer.len > 3) buffer[3] else 0,
+            .width = if (buffer.len > 4) buffer[4] else 0,
+        };
+    }
+
+    pub fn to_buffer(self: FontSpec, buffer: []u8) !usize {
+        if (buffer.len < 1) return error.BufferTooSmall;
+
+        buffer[0] = self.font_id;
+        if (buffer.len > 2) {
+            buffer[1] = @intCast((self.code_page >> 8) & 0xFF);
+            buffer[2] = @intCast(self.code_page & 0xFF);
+        }
+        if (buffer.len > 3) buffer[3] = self.height;
+        if (buffer.len > 4) buffer[4] = self.width;
+
+        return @min(buffer.len, 5);
+    }
+};
+
+/// Color Palette definition
+pub const ColorPalette = struct {
+    palette_id: u8,
+    entries: std.ArrayList(ColorPaletteEntry),
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator, palette_id: u8) ColorPalette {
+        return .{
+            .palette_id = palette_id,
+            .entries = std.ArrayList(ColorPaletteEntry).init(allocator),
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: *ColorPalette) void {
+        self.entries.deinit();
+    }
+
+    pub fn add_entry(self: *ColorPalette, color_id: u8, r: u8, g: u8, b: u8) !void {
+        try self.entries.append(.{
+            .color_id = color_id,
+            .r = r,
+            .g = g,
+            .b = b,
+        });
+    }
+};
+
+pub const ColorPaletteEntry = struct {
+    color_id: u8,
+    r: u8,
+    g: u8,
+    b: u8,
+};
+
+/// Image specification for WSF
+pub const ImageSpec = struct {
+    image_id: u8,
+    format: enum(u8) {
+        monochrome = 0x00,
+        rgb = 0x01,
+        indexed = 0x02,
+        _ = undefined,
+    } = .monochrome,
+    width: u16 = 0,
+    height: u16 = 0,
+    data_length: u32 = 0,
+
+    pub fn from_buffer(buffer: []const u8) ?ImageSpec {
+        if (buffer.len < 1) return null;
+
+        const format_byte = if (buffer.len > 1) buffer[1] else 0x00;
+        const format = switch (format_byte) {
+            0x00 => @as(@TypeOf(@as(ImageSpec, undefined).format), .monochrome),
+            0x01 => .rgb,
+            0x02 => .indexed,
+            else => return null,
+        };
+
+        const width = if (buffer.len > 3)
+            (@as(u16, buffer[2]) << 8) | buffer[3]
+        else
+            0;
+
+        const height = if (buffer.len > 5)
+            (@as(u16, buffer[4]) << 8) | buffer[5]
+        else
+            0;
+
+        const data_length = if (buffer.len > 9)
+            (@as(u32, buffer[6]) << 24) | (@as(u32, buffer[7]) << 16) | (@as(u32, buffer[8]) << 8) | buffer[9]
+        else
+            0;
+
+        return .{
+            .image_id = buffer[0],
+            .format = format,
+            .width = width,
+            .height = height,
+            .data_length = data_length,
+        };
+    }
+};
+
 /// Structured Field Header
 pub const StructuredFieldHeader = struct {
     field_type: StructuredFieldType,
@@ -518,5 +684,117 @@ test "structured field header buffer roundtrip" {
     if (parsed) |p| {
         try std.testing.expectEqual(original.field_type, p.field_type);
         try std.testing.expectEqual(original.length, p.length);
+    }
+}
+
+test "data stream attribute foreground color from buffer" {
+    var buffer: [2]u8 = .{ 0x01, 0x05 };
+    const attr = DataStreamAttribute.from_buffer(&buffer);
+
+    try std.testing.expect(attr != null);
+    if (attr) |a| {
+        try std.testing.expectEqual(DataStreamAttribute.attribute_type.foreground_color, a.attribute_type);
+        try std.testing.expectEqual(@as(u8, 0x05), a.value);
+    }
+}
+
+test "data stream attribute background color from buffer" {
+    var buffer: [2]u8 = .{ 0x02, 0x07 };
+    const attr = DataStreamAttribute.from_buffer(&buffer);
+
+    try std.testing.expect(attr != null);
+    if (attr) |a| {
+        try std.testing.expectEqual(DataStreamAttribute.attribute_type.background_color, a.attribute_type);
+        try std.testing.expectEqual(@as(u8, 0x07), a.value);
+    }
+}
+
+test "data stream attribute intensity from buffer" {
+    var buffer: [2]u8 = .{ 0x03, 0x01 };
+    const attr = DataStreamAttribute.from_buffer(&buffer);
+
+    try std.testing.expect(attr != null);
+    if (attr) |a| {
+        try std.testing.expectEqual(DataStreamAttribute.attribute_type.intensity, a.attribute_type);
+    }
+}
+
+test "data stream attribute to buffer roundtrip" {
+    var buffer: [2]u8 = undefined;
+    const attr = DataStreamAttribute{
+        .attribute_type = .reverse,
+        .value = 0x03,
+    };
+
+    const len = try attr.to_buffer(&buffer);
+    try std.testing.expectEqual(@as(usize, 2), len);
+
+    const parsed = DataStreamAttribute.from_buffer(&buffer);
+    try std.testing.expect(parsed != null);
+    if (parsed) |p| {
+        try std.testing.expectEqual(attr.attribute_type, p.attribute_type);
+        try std.testing.expectEqual(attr.value, p.value);
+    }
+}
+
+test "font spec from buffer minimal" {
+    var buffer: [1]u8 = .{0x05};
+    const font = FontSpec.from_buffer(&buffer);
+
+    try std.testing.expect(font != null);
+    if (font) |f| {
+        try std.testing.expectEqual(@as(u8, 0x05), f.font_id);
+        try std.testing.expectEqual(@as(u16, 0), f.code_page);
+    }
+}
+
+test "font spec from buffer full" {
+    var buffer: [5]u8 = .{ 0x01, 0x04, 0x37, 0x10, 0x08 };
+    const font = FontSpec.from_buffer(&buffer);
+
+    try std.testing.expect(font != null);
+    if (font) |f| {
+        try std.testing.expectEqual(@as(u8, 0x01), f.font_id);
+        try std.testing.expectEqual(@as(u16, 0x0437), f.code_page);
+        try std.testing.expectEqual(@as(u8, 0x10), f.height);
+        try std.testing.expectEqual(@as(u8, 0x08), f.width);
+    }
+}
+
+test "color palette initialization" {
+    var allocator = std.testing.allocator;
+    var palette = ColorPalette.init(allocator, 0x01);
+    defer palette.deinit();
+
+    try palette.add_entry(0x00, 0xFF, 0xFF, 0xFF); // White
+    try palette.add_entry(0x01, 0x00, 0x00, 0x00); // Black
+
+    try std.testing.expectEqual(@as(usize, 2), palette.entries.items.len);
+    try std.testing.expectEqual(@as(u8, 0xFF), palette.entries.items[0].r);
+    try std.testing.expectEqual(@as(u8, 0x00), palette.entries.items[1].b);
+}
+
+test "image spec from buffer monochrome" {
+    var buffer: [1]u8 = .{0x01};
+    const img = ImageSpec.from_buffer(&buffer);
+
+    try std.testing.expect(img != null);
+    if (img) |i| {
+        try std.testing.expectEqual(@as(u8, 0x01), i.image_id);
+        try std.testing.expectEqual(ImageSpec.format.monochrome, i.format);
+    }
+}
+
+test "image spec from buffer rgb full" {
+    var buffer: [10]u8 = .{ 0x02, 0x01, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x04, 0x00 };
+    const img = ImageSpec.from_buffer(&buffer);
+
+    try std.testing.expect(img != null);
+    if (img) |i| {
+        try std.testing.expectEqual(@as(u8, 0x02), i.image_id);
+        try std.testing.expectEqual(ImageSpec.format.rgb, i.format);
+        try std.testing.expectEqual(@as(u16, 0x0200), i.width);
+        try std.testing.expectEqual(@as(u16, 0x0300), i.height);
+        try std.testing.expectEqual(@as(u32, 0x00000400), i.data_length);
     }
 }

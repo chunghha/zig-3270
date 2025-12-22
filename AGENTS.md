@@ -109,6 +109,28 @@ Always run all tests (except intentionally long-running ones) each time you make
 - Follow Zig's naming conventions: snake_case for functions and variables, PascalCase for types.
 - Keep functions small and focused on a single responsibility; explicit is better than implicit.
 
+# DOCUMENTATION STRUCTURE
+
+- **README.md**: Root repository documentation only. Single README at project root.
+- **INDEX.md**: Use in all subfolders (e.g., `docs/INDEX.md`, `examples/INDEX.md`) as the entry point for that folder.
+- **INDEX.md Purpose**: Link to all other `.md` files in that subfolder with brief descriptions.
+- **Rationale**: Clear navigation structure; INDEX.md indicates "this is a folder of documentation" while README implies root-level documentation.
+
+Example structure:
+```
+/README.md                    # Root only
+/docs/
+  INDEX.md                    # Links: ARCHITECTURE.md, API_GUIDE.md, etc.
+  ARCHITECTURE.md
+  API_GUIDE.md
+  ...
+/examples/
+  INDEX.md                    # Links: batch_processor.zig, session_monitor.zig, etc.
+  batch_processor.zig
+  session_monitor.zig
+  ...
+```
+
 # Taskfile (Taskfile.yml) — internal note
 
 Internal: `Taskfile.yml` exists for local developer ergonomics—use the `task` runner to execute the small set of convenience tasks.
