@@ -1539,10 +1539,92 @@ See **V0_8_0_PLAN.md** for comprehensive roadmap.
 
 ---
 
+---
+
+## v0.9.0 Development Plan (Enterprise Features)
+
+**Status**: Planning phase  
+**Target Release**: January 2025  
+**Estimated Duration**: 2-3 weeks (60-80 hours)  
+**Target Start**: Dec 26, 2024  
+
+See **V0_9_0_PLAN.md** for comprehensive development roadmap and **V0_9_0_ROADMAP.md** for strategic overview.
+
+### v0.9.0 Focus Areas
+
+#### Priority 1: Multi-Session Management (20-25 hours)
+- [ ] SessionPool manager - Create/destroy/track concurrent sessions
+- [ ] LifecycleManager - Pause/resume/event hooks
+- [ ] SessionMigration - Migrate active sessions between endpoints
+- Tests: 20 total (8+7+5)
+
+#### Priority 2: Load Balancing & Failover (15-20 hours)
+- [ ] LoadBalancer - Multiple strategies (round-robin, weighted, least-conn)
+- [ ] Failover - Auto-detect failures and migrate sessions
+- [ ] Health checks - Continuous endpoint monitoring
+- Tests: 16 total (8+5+3)
+
+#### Priority 3: Audit & Compliance (15-18 hours)
+- [ ] AuditLog - Event-based comprehensive audit trail
+- [ ] Compliance - SOC2/HIPAA/PCI compliance rules
+- [ ] DataRetention - Log rotation and secure deletion
+- Tests: 15 total (8+5+2)
+
+#### Priority 4: Enterprise Integration (10-15 hours)
+- [ ] REST API - Full CRUD operations for sessions/endpoints
+- [ ] Webhooks - Event notifications
+- [ ] Documentation - Deployment guide + API reference
+- Tests: 13 total (8+5)
+
+### v0.9.0 Success Criteria
+
+Code Quality:
+- [ ] 474+ tests (45 new), all passing
+- [ ] Zero compiler warnings
+- [ ] 100% code formatting
+- [ ] No performance regressions
+
+Features:
+- [ ] Multi-session pool operational
+- [ ] Load balancer with strategies working
+- [ ] Automatic failover functional
+- [ ] Audit logging comprehensive
+- [ ] REST API fully functional
+
+Documentation:
+- [ ] Enterprise deployment guide (800+ lines)
+- [ ] REST API reference (600+ lines)
+- [ ] Example clients and integration
+
+### Estimated Totals
+
+- **New Source Files**: 7-8 modules
+- **Total Code Added**: 2,500+ lines
+- **Tests Added**: 45+ new tests
+- **Total Time**: 60-80 hours
+- **Status**: Ready to start
+
+### v0.9.0 Key Deliverables
+
+1. **SessionPool** (400 LOC) - Manage multiple concurrent connections
+2. **LifecycleManager** (350 LOC) - Pause/resume/migrate sessions
+3. **SessionMigration** (300 LOC) - Failover support
+4. **LoadBalancer** (450 LOC) - Distribute sessions across endpoints
+5. **Failover** (350 LOC) - Automatic recovery
+6. **AuditLog** (450 LOC) - Compliance audit trail
+7. **Compliance** (350 LOC) - Rules framework
+8. **RestAPI** (500 LOC) - HTTP API interface
+9. **Webhooks** (300 LOC) - Event notifications
+10. **Documentation** (1400+ LOC) - Deployment + API guides
+
+---
+
 ## Resources
 
 - **AGENTS.md** - Development philosophy & TDD guidelines
 - **GHOSTTY_INTEGRATION.md** - libghostty-vt integration details
 - **HEX_VIEWER.md** - Hex viewer documentation
 - **CODEBASE_REVIEW.md** - Detailed code analysis
+- **V0_9_0_PLAN.md** - Comprehensive development plan
+- **V0_9_0_ROADMAP.md** - Strategic release roadmap
 
