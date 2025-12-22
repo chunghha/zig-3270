@@ -21,6 +21,8 @@ pub const failover = @import("failover.zig");
 pub const health_checker = @import("health_checker.zig");
 pub const audit_log = @import("audit_log.zig");
 pub const compliance = @import("compliance.zig");
+pub const rest_api = @import("rest_api.zig");
+pub const event_webhooks = @import("event_webhooks.zig");
 
 pub fn bufferedPrint() !void {
     // Stdout is for the actual output of your application, for example if you
