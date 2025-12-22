@@ -182,7 +182,7 @@ test "debug log module string representation" {
 }
 
 test "debug log config initialization" {
-    var config = DebugLog.Config.init(std.testing.allocator);
+    const config = DebugLog.Config.init(std.testing.allocator);
     try std.testing.expectEqual(DebugLog.Level.disabled, config.global_level);
 }
 
@@ -238,6 +238,9 @@ test "debug log level ordering" {
 }
 
 test "debug log logging disabled by default" {
+    DebugLog.logger_config = null;
+    defer DebugLog.logger_config = null;
+
     try std.testing.expect(!DebugLog.is_enabled(.parser, .err));
     try std.testing.expect(!DebugLog.is_enabled(.parser, .info));
 }

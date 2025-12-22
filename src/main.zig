@@ -59,6 +59,9 @@ test {
     _ = @import("input.zig");
     _ = @import("attributes.zig");
     _ = @import("hex_viewer.zig");
+    _ = @import("cli.zig");
+    _ = @import("profile_manager.zig");
+    _ = @import("session_recorder.zig");
     _ = ghostty_vt_example;
     _ = ghostty_vt_terminal;
     _ = client_mod;
