@@ -275,11 +275,12 @@ git commit -m "style: description"
 
 ## Useful Files to Read
 
-1. **SESSION_SUMMARY.md** - Complete overview of this session's work
-2. **TODO.md** - Project roadmap with completed and future items
-3. **docs/ARCHITECTURE.md** - System design and module relationships
-4. **docs/PERFORMANCE.md** - Performance analysis and optimization guide
-5. **AGENTS.md** - Development methodology and standards
+1. **TODO.md** - Project roadmap with completed features and next steps
+2. **docs/ARCHITECTURE.md** - System design and module relationships
+3. **docs/PERFORMANCE.md** - Performance analysis and optimization guide
+4. **docs/USER_GUIDE.md** - Using the terminal emulator
+5. **docs/API_GUIDE.md** - Embedding and programmatic usage
+6. **AGENTS.md** - Development methodology and standards
 
 ## Creating a Release
 
@@ -372,13 +373,14 @@ zig build test  # Try building again
 
 ## Next Steps
 
-1. Review **SESSION_SUMMARY.md** for complete session overview
-2. Read **docs/ARCHITECTURE.md** to understand system design
-3. Review **docs/PERFORMANCE.md** for optimization opportunities
-4. Check **TODO.md** for future development roadmap
+1. Read **docs/ARCHITECTURE.md** to understand system design
+2. Review **docs/PERFORMANCE.md** for optimization opportunities
+3. Check **TODO.md** for future development roadmap
+4. Explore **docs/USER_GUIDE.md** for terminal usage
 5. Run `task check` to verify everything works
 
 ---
 
-**All 5 Priorities Complete** ✓  
-121+ tests passing • 4,074 lines • 33 modules • Production-ready
+**v0.7.0 Complete** ✓  
+192+ tests passing • 9,232 lines • 62 modules • Production-ready  
+CLI, Interactive Mode, Debugging Tools, Complete Documentation

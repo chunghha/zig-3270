@@ -8,9 +8,9 @@ A high-performance TN3270 (3270 terminal) emulator written in Zig with comprehen
 
 - **Language**: Pure Zig with optional libghostty-vt integration
 - **Platform**: macOS, Linux (cross-compilation supported)
-- **Test Coverage**: 160+ tests, 100% passing
-- **Codebase**: ~8,946 lines, 46 modules
-- **Status**: Production-ready with comprehensive quality assurance and performance optimization
+- **Test Coverage**: 192+ tests, 100% passing
+- **Codebase**: ~9,232 lines, 62 modules
+- **Status**: v0.7.0 - Production-ready with CLI, interactive mode, debugging tools, and comprehensive documentation
 
 ## Dependencies
 
@@ -60,10 +60,21 @@ A high-performance TN3270 (3270 terminal) emulator written in Zig with comprehen
 - ✓ Comprehensive benchmark suite (19 performance tests)
 
 ### User Features
-- ✓ Keyboard configuration system
+- ✓ CLI interface with command-line argument parsing
+- ✓ Interactive terminal mode with keyboard input and display refresh
+- ✓ Keyboard configuration system with JSON config files
 - ✓ Session persistence with crash recovery
-- ✓ Multiple profile support
+- ✓ Multiple connection profiles
+- ✓ Session recording and playback
+- ✓ Screen history & scrollback buffer navigation
+- ✓ ANSI color support for field attributes
 - ✓ Error recovery guidance
+
+### Advanced Debugging
+- ✓ Protocol snooper for event capture and analysis
+- ✓ State inspector for dumping and JSON export
+- ✓ CLI profiler for performance bottleneck identification
+- ✓ Session auto-save with configurable intervals
 
 ## Quick Start
 
@@ -206,15 +217,16 @@ task profile                # detailed performance profiling
 
 ### Test Coverage
 
-- **160+ total tests** organized by module and category
+- **192+ total tests** organized by module and category
 - **100% pass rate** across all test categories
-- **Unit tests** (90+): Individual functions, happy/error cases
-- **Integration tests** (12): End-to-end workflows combining multiple modules
+- **Unit tests**: Individual functions, happy/error cases
+- **Integration tests** (12+): End-to-end workflows combining multiple modules
 - **Performance benchmarks** (19): Comprehensive performance analysis
   - Throughput tests (6): Parser, executor, field management
   - Enhanced tests (6): With allocation tracking
   - Optimization tests (3): Before/after comparisons
   - Comprehensive tests (4): Real-world scenarios
+- **CLI & Feature tests** (40+): Command-line interface, interactive mode, debugging tools, user features
 
 ### Test Organization
 
@@ -269,16 +281,31 @@ docs: document protocol.zig constants
 - ✓ Comprehensive error handling
 - ✓ Full test coverage (121+ tests)
 
-### Implemented Since v0.5.0
+### Implemented Features (v0.5.1 - v0.7.0)
 
+**v0.5.1**:
+- Core architecture with 5-layer design and facade pattern
+- EBCDIC encoding/decoding with round-trip conversion
+- Error handling with context and recovery suggestions
+- Debug logging system with per-module configuration
+- Performance profiling and memory tracking
+- Buffer pooling, field storage, and field caching optimizations
+
+**v0.6.0**:
+- Full CLI interface with connection profiles and session recording
+- Interactive terminal mode with keyboard input and real-time display
+- Advanced debugging: protocol snooper, state inspector, CLI profiler
+- Session auto-save with configurable intervals
+
+**v0.7.0**:
 - Session persistence with crash recovery
-- Screen history & scrollback buffer
-- ANSI color support and attribute mapping
+- Screen history & scrollback buffer with navigation
+- ANSI color support and field attribute mapping
 - Keyboard mapping configuration system
-- Network resilience with connection pooling
-- Performance optimizations (buffer pooling, field caching)
-- Comprehensive benchmark suite
-- Allocation tracking and profiling
+- Network resilience with connection pooling and auto-reconnect
+- Comprehensive documentation (USER_GUIDE, API_GUIDE, CONFIG_REFERENCE)
+- Protocol extensions (field validation, telnet negotiation, charset support)
+- Example programs for common use cases
 
 ## Examples
 
@@ -341,6 +368,9 @@ See AGENTS.md for detailed development guidelines.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System design and module structure
 - [docs/PERFORMANCE.md](docs/PERFORMANCE.md) - Performance profiling and optimization guide
 - [docs/CI_CD.md](docs/CI_CD.md) - CI/CD pipeline and release process
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md) - User documentation and terminal usage
+- [docs/API_GUIDE.md](docs/API_GUIDE.md) - Developer API and embedding guide
+- [docs/CONFIG_REFERENCE.md](docs/CONFIG_REFERENCE.md) - Configuration options and CLI flags
 - [docs/GHOSTTY_INTEGRATION.md](docs/GHOSTTY_INTEGRATION.md) - VT integration details
 - [docs/HEX_VIEWER.md](docs/HEX_VIEWER.md) - Hex viewer utility documentation
 - [docs/PROTOCOL.md](docs/PROTOCOL.md) - TN3270 protocol specification
@@ -402,9 +432,4 @@ MIT
 
 ## Documentation
 
-See comprehensive documentation in `docs/`:
-- [QUICKSTART.md](QUICKSTART.md) - Quick reference and development workflow  
-- [AGENTS.md](AGENTS.md) - TDD methodology and quality standards
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System design and module structure
-- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) - Performance profiling and optimization guide
-- [docs/CI_CD.md](docs/CI_CD.md) - CI/CD pipeline and release process
+
