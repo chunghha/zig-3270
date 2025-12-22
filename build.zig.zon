@@ -1,7 +1,7 @@
 .{
     .name = .zig_3270,
-    .version = "0.9.3",
-    .fingerprint = 0x9a81cad6c5291466,
+    .version = "0.9.4",
+    .fingerprint = 0x9a81cad6892654ee,
     .dependencies = .{
         .libghostty_vt = .{
             .url = "https://github.com/ghostty-org/ghostty/archive/refs/heads/main.tar.gz",
