@@ -1,11 +1,11 @@
 .{
     .name = .zig_3270,
-    .version = "0.11.1",
+    .version = "0.11.3",
     .fingerprint = 0x9a81cad6892654ee,
     .dependencies = .{
         .libghostty_vt = .{
             .url = "https://github.com/ghostty-org/ghostty/archive/refs/heads/main.tar.gz",
-            .hash = "1220e9c6565e450da9ba151a6c0002da1cdcefa4f5446bb7730c7efba38258884fd1",
+            .hash = "1220be986b506b52467903e072e6d605e7a5974846affe3b7d6ef9ed1ab9768fdb83",
             .lazy = true,
         },
     },
