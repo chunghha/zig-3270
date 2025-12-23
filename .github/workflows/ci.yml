@@ -93,6 +93,8 @@ jobs:
           zig build -Doptimize=ReleaseSafe
           mkdir -p release
           cp zig-out/bin/* release/
+          cp -r docs/ release/docs/
+          cp README.md QUICKSTART.md release/
 
       - name: Get version from tag
         id: tag_name
@@ -105,11 +107,7 @@ jobs:
         with:
           tag_name: ${{ steps.tag_name.outputs.version }}
           name: Release ${{ steps.tag_name.outputs.version }}
-          files: |
-            release/*
-            README.md
-            QUICKSTART.md
-            docs/**
+          files: release/*
           draft: false
           prerelease: false
           generate_release_notes: true
