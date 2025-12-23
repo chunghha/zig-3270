@@ -1,9 +1,27 @@
 # TODO & Project Roadmap
 
+## Current Issues & Known Blockers
+
+### Windows CI/CD Pipeline - MUTED
+**Status**: ⏸ DISABLED (Zig installation failures)  
+**Location**: `.github/workflows/windows-build.yml`  
+**Issue**: Zig installation via `mlugg/setup-zig@v1` fails on Windows runners  
+**Impact**: Windows builds not tested in CI/CD (manual testing required)  
+**Solution**: Investigate alternative Zig installation methods or Windows runner setup  
+**Priority**: Medium (v0.12.0 or later)  
+**Action Items**:
+- [ ] Test different Zig installation approaches on Windows runners
+- [ ] Consider using pre-built Zig binaries instead of master
+- [ ] Evaluate Windows Server 2025 runners when available
+- [ ] Document Windows local build process as interim solution
+- [ ] Re-enable workflow once installation is fixed
+
+---
+
 ## Summary
 
-**Current Version**: v0.11.3-ga (Phase 4: Documentation & Polish Complete)  
-**Status in build.zig.zon**: v0.11.3  
+**Current Version**: v0.11.4 (v0.11.x series complete)  
+**Status in build.zig.zon**: v0.11.4  
 **Test Coverage**: 400+ tests (fully passing), comprehensive test suite  
 **Codebase Size**: ~13,000 lines of Zig (88 source files + examples)  
 **Architecture**: 5-layer design with facades + performance layer + CLI + debugging tools + advanced allocators + zero-copy parser ✓  
